@@ -14,9 +14,64 @@ import onmt.model_builder
 import onmt.modules
 import onmt.opts
 
+import os
+import sqlite3
+from collections import defaultdict
+import numpy as np
+
+from onmt.train_single import get_feat_values
 
 def main(opt):
-    translator = build_translator(opt, report_score=True)
+
+    SimulationLanguages = [opt.wals_src, opt.wals_tgt]
+
+    print('Loading WALS features from databases...')
+
+    cwd = os.getcwd()
+    print(cwd)
+
+    db = sqlite3.connect(cwd + '/onmt/WalsValues.db')
+    cursor = db.cursor()
+    cursor.execute('SELECT * FROM WalsValues')
+    WalsValues = cursor.fetchall()
+
+    db = sqlite3.connect(cwd + '/onmt/FeaturesList.db')
+    cursor = db.cursor()
+    cursor.execute('SELECT * FROM FeaturesList')
+    FeaturesList = cursor.fetchall()
+
+    db = sqlite3.connect(cwd + '/onmt/FTInfos.db')
+    cursor = db.cursor()
+    cursor.execute('SELECT * FROM FTInfos')
+    FTInfos = cursor.fetchall()
+
+    db = sqlite3.connect(cwd + '/onmt/FTList.db')
+    cursor = db.cursor()
+    cursor.execute('SELECT * FROM FTList')
+    FTList = cursor.fetchall()
+
+    ListLanguages = []
+    for i in WalsValues:
+        ListLanguages.append(i[0])
+
+    FeatureTypes = defaultdict(lambda: defaultdict(list))
+    for i in FTList:
+        FeatureTypes[i[0]] = i[1].split(',')
+
+    FeatureNames = []
+    for i in FeatureTypes:
+        for j in FeatureTypes[i]:
+            FeatureNames.append(j)
+
+    FeatureTypesNames = []
+    for i in FeatureTypes:
+        FeatureTypesNames.append(i)
+
+    FeatureValues, FeatureTensors = get_feat_values(SimulationLanguages, WalsValues, FeaturesList, ListLanguages, FeatureTypes, FeatureNames) 
+
+    print('WALS databases loaded!')
+
+    translator = build_translator(opt, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages, report_score=True)
     translator.translate(src_path=opt.src,
                          tgt_path=opt.tgt,
                          src_dir=opt.src_dir,
