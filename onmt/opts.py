@@ -567,6 +567,20 @@ def translate_opts(parser):
                        help="""Using grayscale image can training
                        model faster and smaller""")
 
+    # Wals options
+    group.add_argument('-wals_src', required=True, type=str, help="Wals source language.")
+
+    group.add_argument('-wals_tgt', required=True, type=str, help="Wals target language.")
+
+    parser.add_argument('-wals_model', required=True, type=str,
+                        choices=['EncInitHidden_Target', 'EncInitHidden_Both', 'DecInitHidden_Target', 'DecInitHidden_Both', 'WalstoSource_Target', 'WalstoSource_Both', 'WalstoTarget_Target', 'WalstoTarget_Both', 'WalsDoublyAttentive_Target', 'WalsDoublyAttentive_Both'],
+                        help="""WALS NMT model type.""")
+    group.add_argument('-wals_function', type=str, default=False,
+                       choices=['tanh', 'relu'],
+                       help='Function over the final WALS tensors.')
+    group.add_argument('-wals_size', type=int, default=10,
+                       help='Size of WALS hidden states')
+
 
 def add_md_help_argument(parser):
     """ md help parser """
