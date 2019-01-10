@@ -17,8 +17,12 @@ import onmt.inputters as inputters
 import onmt.opts as opts
 import onmt.decoders.ensemble
 
+from onmt.models.model import get_local_features
 
-def build_translator(opt, report_score=True, logger=None, out_file=None):
+from collections import defaultdict
+
+
+def build_translator(opt, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages, report_score=True, logger=None, out_file=None):
     if out_file is None:
         out_file = codecs.open(opt.output, 'w+', 'utf-8')
 
@@ -35,7 +39,7 @@ def build_translator(opt, report_score=True, logger=None, out_file=None):
             onmt.decoders.ensemble.load_test_model(opt, dummy_opt.__dict__)
     else:
         fields, model, model_opt = \
-            onmt.model_builder.load_test_model(opt, dummy_opt.__dict__)
+            onmt.model_builder.load_test_model(opt, dummy_opt.__dict__, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages)
 
     scorer = onmt.translate.GNMTGlobalScorer(opt.alpha,
                                              opt.beta,
@@ -350,9 +354,77 @@ class Translator(object):
         # Encoder forward.
         src = inputters.make_features(batch, 'src', data.data_type)
         _, src_lengths = batch.src
-        enc_states, memory_bank = self.model.encoder(src, src_lengths)
-        dec_states = self.model.decoder.init_decoder_state(
-            src, memory_bank, enc_states, with_cache=True)
+
+
+
+
+        if self.model.wals_model == 'EncInitHidden_Target' or self.model.wals_model == 'EncInitHidden_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
+
+            # create initial hidden state differently for GRU/LSTM
+            if self.model.evaluate_is_tuple_hidden(src, lengths):
+                enc_init_state = (wals_features, wals_features)
+                is_tuple = True
+            else:
+                enc_init_state = wals_features
+                is_tuple = False
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths, hidden=enc_init_state, is_LSTM=is_tuple)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, enc_states, with_cache=True)
+
+        if self.model.wals_model == 'DecInitHidden_Target' or self.model.wals_model == 'DecInitHidden_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
+
+            # Find mini-batch size and get the right size.
+            dim0, dim1, dim2 = src.size()
+
+            wals_features_modelB = wals_features.repeat(self.model.model_opt.dec_layers,dim1,1) # dec_layers x batch_size x rnn_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths)
+            dec_init_state = self.model.combine_enc_hidden_wals_proj(enc_states, wals_features_modelB)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, dec_init_state, with_cache=True)
+
+        if self.model.wals_model == 'WalstoSource_Target' or self.model.wals_model == 'WalstoSource_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths, wals_features=wals_features)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, enc_states, with_cache=True)
+
+        if self.model.wals_model == 'WalstoTarget_Target' or self.model.wals_model == 'WalstoTarget_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, enc_states, with_cache=True)
+
+        if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both, self.MLPFeatureTypes) # 11 x rnn_size
+
+            dim0, dim1 = wals_features.size()
+            dim0_src, dim1_src, dim2_src = src.size()
+            wals_features = wals_features.view(dim0, dim1_src, dim1) # 11 x batch_size x rnn_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, wals_features, enc_states, with_cache=True)
+
+
+
 
         # Tile states and memory beam_size times.
         dec_states.map_batch_fn(
@@ -393,13 +465,29 @@ class Translator(object):
         for step in range(max_length):
             decoder_input = alive_seq[:, -1].view(1, -1, 1)
 
-            # Decoder forward.
-            dec_out, dec_states, attn = self.model.decoder(
-                decoder_input,
-                memory_bank,
-                dec_states,
-                memory_lengths=memory_lengths,
-                step=step)
+
+
+            if self.model.wals_model == 'EncInitHidden_Target' or self.model.wals_model == 'EncInitHidden_Both':
+
+                dec_out, dec_states, attn = self.model.decoder(decoder_input, memory_bank, dec_states, memory_lengths=memory_lengths, step=step)
+
+            if self.model.wals_model == 'DecInitHidden_Target' or self.model.wals_model == 'DecInitHidden_Both':
+
+                dec_out, dec_states, attn = self.model.decoder(decoder_input, memory_bank, dec_states, memory_lengths=memory_lengths, step=step)
+
+            if self.model.wals_model == 'WalstoSource_Target' or self.model.wals_model == 'WalstoSource_Both':
+
+                dec_out, dec_states, attn = self.model.decoder(decoder_input, memory_bank, dec_states, memory_lengths=memory_lengths, step=step)
+
+            if self.model.wals_model == 'WalstoTarget_Target' or self.model.wals_model == 'WalstoTarget_Both':
+
+                dec_out, dec_states, attn = self.model.decoder(decoder_input, memory_bank, dec_states, memory_lengths=memory_lengths, wals_features = wals_features, step=step)
+
+            if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
+
+                decs_out, wals_out, dec_states, attn = self.model.decoder(decoder_input, memory_bank, dec_states, memory_lengths=memory_lengths, wals_features = wals_features, step=step)
+                dec_out = decs_out + wals_out
+
 
             # Generator forward.
             log_probs = self.model.generator.forward(dec_out.squeeze(0))
@@ -548,9 +636,76 @@ class Translator(object):
         if data_type == 'text':
             _, src_lengths = batch.src
 
-        enc_states, memory_bank = self.model.encoder(src, src_lengths)
-        dec_states = self.model.decoder.init_decoder_state(
-            src, memory_bank, enc_states)
+
+
+
+        if self.model.wals_model == 'EncInitHidden_Target' or self.model.wals_model == 'EncInitHidden_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
+
+            # create initial hidden state differently for GRU/LSTM
+            if self.model.evaluate_is_tuple_hidden(src, src_lengths):
+                enc_init_state = (wals_features, wals_features)
+                is_tuple = True
+            else:
+                enc_init_state = wals_features
+                is_tuple = False
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths, hidden=enc_init_state, is_LSTM=is_tuple)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, enc_states)
+
+        if self.model.wals_model == 'DecInitHidden_Target' or self.model.wals_model == 'DecInitHidden_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
+
+            # Find mini-batch size and get the right size.
+            dim0, dim1, dim2 = src.size()
+
+            wals_features_modelB = wals_features.repeat(self.model.model_opt.dec_layers,dim1,1) # dec_layers x batch_size x rnn_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths)
+            dec_init_state = self.model.combine_enc_hidden_wals_proj(enc_states, wals_features_modelB)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, dec_init_state)
+
+        if self.model.wals_model == 'WalstoSource_Target' or self.model.wals_model == 'WalstoSource_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths, wals_features=wals_features)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, enc_states)
+
+        if self.model.wals_model == 'WalstoTarget_Target' or self.model.wals_model == 'WalstoTarget_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, enc_states)
+
+        if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both, self.MLPFeatureTypes) # 11 x rnn_size
+
+            dim0, dim1 = wals_features.size()
+            dim0_src, dim1_src, dim2_src = src.size()
+            wals_features = wals_features.view(dim0, dim1_src, dim1) # 11 x batch_size x rnn_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, wals_features, enc_states)
+
+
+
 
         if src_lengths is None:
             assert not isinstance(memory_bank, tuple), \
@@ -589,11 +744,29 @@ class Translator(object):
             # in the decoder
             inp = inp.unsqueeze(2)
 
-            # Run one step.
-            dec_out, dec_states, attn = self.model.decoder(
-                inp, memory_bank, dec_states,
-                memory_lengths=memory_lengths,
-                step=i)
+
+
+
+            if self.model.wals_model == 'EncInitHidden_Target' or self.model.wals_model == 'EncInitHidden_Both':
+
+                dec_out, dec_states, attn = self.model.decoder(inp, memory_bank, dec_states, memory_lengths=memory_lengths, step=i)
+
+            if self.model.wals_model == 'DecInitHidden_Target' or self.model.wals_model == 'DecInitHidden_Both':
+
+                dec_out, dec_states, attn = self.model.decoder(inp, memory_bank, dec_states, memory_lengths=memory_lengths, step=i)
+
+            if self.model.wals_model == 'WalstoSource_Target' or self.model.wals_model == 'WalstoSource_Both':
+
+                dec_out, dec_states, attn = self.model.decoder(inp, memory_bank, dec_states, memory_lengths=memory_lengths, step=i)
+
+            if self.model.wals_model == 'WalstoTarget_Target' or self.model.wals_model == 'WalstoTarget_Both':
+
+                dec_out, dec_states, attn = self.model.decoder(inp, memory_bank, dec_states, memory_lengths=memory_lengths, wals_features = wals_features, step=i)
+
+            if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
+
+                decs_out, wals_out, dec_states, attn = self.model.decoder(inp, memory_bank, dec_states, memory_lengths=memory_lengths, wals_features = wals_features, step=i)
+                dec_out = decs_out + wals_out
 
             dec_out = dec_out.squeeze(0)
 
@@ -659,16 +832,100 @@ class Translator(object):
         tgt_in = inputters.make_features(batch, 'tgt')[:-1]
 
         #  (1) run the encoder on the src
-        enc_states, memory_bank = self.model.encoder(src, src_lengths)
-        dec_states = \
-            self.model.decoder.init_decoder_state(src, memory_bank, enc_states)
+
+        if self.model.wals_model == 'EncInitHidden_Target' or self.model.wals_model == 'EncInitHidden_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
+
+            # create initial hidden state differently for GRU/LSTM
+            if self.model.evaluate_is_tuple_hidden(src, lengths):
+                enc_init_state = (wals_features, wals_features)
+                is_tuple = True
+            else:
+                enc_init_state = wals_features
+                is_tuple = False
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths, hidden=enc_init_state, is_LSTM=is_tuple)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, enc_states)
+
+        if self.model.wals_model == 'DecInitHidden_Target' or self.model.wals_model == 'DecInitHidden_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
+
+            # Find mini-batch size and get the right size.
+            dim0, dim1, dim2 = src.size()
+
+            wals_features_modelB = wals_features.repeat(self.model.model_opt.dec_layers,dim1,1) # dec_layers x batch_size x rnn_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths)
+            dec_init_state = self.model.combine_enc_hidden_wals_proj(enc_states, wals_features_modelB)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, dec_init_state)
+
+        if self.model.wals_model == 'WalstoSource_Target' or self.model.wals_model == 'WalstoSource_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths, wals_features=wals_features)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, enc_states)
+
+        if self.model.wals_model == 'WalstoTarget_Target' or self.model.wals_model == 'WalstoTarget_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, enc_states)
+
+        if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both, self.MLPFeatureTypes) # 11 x rnn_size
+
+            dim0, dim1 = wals_features.size()
+            dim0_src, dim1_src, dim2_src = src.size()
+            wals_features = wals_features.view(dim0, dim1_src, dim1) # 11 x batch_size x rnn_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, wals_features, enc_states)
 
         #  (2) if a target is specified, compute the 'goldScore'
         #  (i.e. log likelihood) of the target under the model
         tt = torch.cuda if self.cuda else torch
         gold_scores = tt.FloatTensor(batch.batch_size).fill_(0)
-        dec_out, _, _ = self.model.decoder(
-            tgt_in, memory_bank, dec_states, memory_lengths=src_lengths)
+
+
+        if self.model.wals_model == 'EncInitHidden_Target' or self.model.wals_model == 'EncInitHidden_Both':
+
+            dec_out, _, _ = self.model.decoder(tgt_in, memory_bank, dec_states, memory_lengths=src_lengths)
+
+        if self.model.wals_model == 'DecInitHidden_Target' or self.model.wals_model == 'DecInitHidden_Both':
+
+            dec_out, _, _ = self.model.decoder(tgt_in, memory_bank, dec_states, memory_lengths=src_lengths)
+
+        if self.model.wals_model == 'WalstoSource_Target' or self.model.wals_model == 'WalstoSource_Both':
+
+            dec_out, _, _ = self.model.decoder(tgt_in, memory_bank, dec_states, memory_lengths=src_lengths)
+
+        if self.model.wals_model == 'WalstoTarget_Target' or self.model.wals_model == 'WalstoTarget_Both':
+
+            dec_out, _, _ = self.model.decoder(tgt_in, memory_bank, dec_states, memory_lengths=src_lengths, wals_features = wals_features)
+
+        if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
+
+            decs_out, wals_out, _, _ = self.model.decoder(tgt_in, memory_bank, dec_states, memory_lengths=src_lengths, wals_features = wals_features)
+            dec_out = decs_out + wals_out
+
+
 
         tgt_pad = self.fields["tgt"].vocab.stoi[inputters.PAD_WORD]
         for dec, tgt in zip(dec_out, batch.tgt[1:].data):
