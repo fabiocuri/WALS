@@ -311,70 +311,70 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
         MLP2RNNHiddenSize_Target = build_mlp2rnnhiddensize_target(model_opt, FTInfos)
         print('Embeddings for WALS features and MLP models are built!')
         model = EncoderInitialization(model_opt.wals_model, encoder, decoder, MLP2RNNHiddenSize_Target, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
-        print("Model A created: uses WALS features from the target language to initialize encoder's hidden state.")
+        print("Model created: uses WALS features from the target language to initialize encoder's hidden state.")
 
     elif model_opt.wals_model == 'EncInitHidden_Both':
     
         MLP2RNNHiddenSize_Both = build_mlp2rnnhiddensize_both(model_opt, FTInfos)
         print('Embeddings for WALS features and MLP models are built!')
         model = EncoderInitialization(model_opt.wals_model,encoder, decoder, MLP2RNNHiddenSize_Both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
-        print("Model A created: uses WALS features from the source and target languages to initialize encoder's hidden state.")
+        print("Model created: uses WALS features from the source and target languages to initialize encoder's hidden state.")
 
     elif model_opt.wals_model == 'DecInitHidden_Target':
 
         MLP2RNNHiddenSize_Target = build_mlp2rnnhiddensize_target(model_opt, FTInfos)
         print('Embeddings for WALS features and MLP models are built!')
         model = DecoderInitialization(model_opt.wals_model,encoder, decoder, MLP2RNNHiddenSize_Target, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
-        print("Model B: adds WALS features from the target language to the encoder's output to initialize decoder's hidden state.")
+        print("Model created: adds WALS features from the target language to the encoder's output to initialize decoder's hidden state.")
 
     elif model_opt.wals_model == 'DecInitHidden_Both':
     
         MLP2RNNHiddenSize_Both = build_mlp2rnnhiddensize_both(model_opt, FTInfos)
         print('Embeddings for WALS features and MLP models are built!')
         model = DecoderInitialization(model_opt.wals_model,encoder, decoder, MLP2RNNHiddenSize_Both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
-        print("Model B: adds WALS features from the source and target languages to the encoder's output to initialize decoder's hidden state.")
+        print("Model created: adds WALS features from the source and target languages to the encoder's output to initialize decoder's hidden state.")
 
     elif model_opt.wals_model == 'WalstoSource_Target':
 
         MLP2WALSHiddenSize_Target = build_mlp2walshiddensize_target(model_opt, FTInfos)
         print('Embeddings for WALS features and MLP models are built!')
         model = CombineWalsSourceWords(model_opt.wals_model,encoder, decoder, MLP2WALSHiddenSize_Target, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
-        print("Model C: concatenates WALS features from the target language to source words embeddings.")
+        print("Model created: concatenates WALS features from the target language to source words embeddings.")
 
     elif model_opt.wals_model == 'WalstoSource_Both':
     
         MLP2WALSHiddenSize_Both = build_mlp2walshiddensize_both(model_opt, FTInfos)
         print('Embeddings for WALS features and MLP models are built!')
         model = CombineWalsSourceWords(model_opt.wals_model,encoder, decoder, MLP2WALSHiddenSize_Both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
-        print("Model C: concatenates WALS features from the source and target languages to source words embeddings.")
+        print("Model created: concatenates WALS features from the source and target languages to source words embeddings.")
 
     elif model_opt.wals_model == 'WalstoTarget_Target':
 
         MLP2WALSHiddenSize_Target = build_mlp2walshiddensize_target(model_opt, FTInfos)
         print('Embeddings for WALS features and MLP models are built!')
         model = CombineWalsTargetWords(model_opt.wals_model,encoder, decoder, MLP2WALSHiddenSize_Target, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
-        print("Model D: concatenates WALS features from the target language to target words embeddings.")
+        print("Model created: concatenates WALS features from the target language to target words embeddings.")
 
     elif model_opt.wals_model == 'WalstoTarget_Both':
     
         MLP2WALSHiddenSize_Both = build_mlp2walshiddensize_both(model_opt, FTInfos)
         print('Embeddings for WALS features and MLP models are built!')
         model = CombineWalsTargetWords(model_opt.wals_model,encoder, decoder, MLP2WALSHiddenSize_Both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
-        print("Model D: concatenates WALS features from the source and target languages to target words embeddings.")
+        print("Model created: concatenates WALS features from the source and target languages to target words embeddings.")
 
     elif model_opt.wals_model == 'WalsDoublyAttentive_Target':
         
         MLP_AttentionTarget = build_mlp_model__target(model_opt)
         print('Embeddings for WALS features and MLP models are built!')
         model = WalsDoublyAttention(model_opt.wals_model,encoder, decoder, MLP_AttentionTarget, MLPFeatureTypes, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
-        print("Model E created: the WALS features from the target language are incorporated as an additional attention mechanism.")
+        print("Model created: the WALS features from the target language are incorporated as an additional attention mechanism.")
 
     elif model_opt.wals_model == 'WalsDoublyAttentive_Both': 
 
         MLP_AttentionBoth = build_mlp_model_E_both(model_opt)
         print('Embeddings for WALS features and MLP models are built!')
         model = WalsDoublyAttention(model_opt.wals_model,encoder, decoder, MLP_AttentionBoth, MLPFeatureTypes, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
-        print("Model E created: the WALS features from the source and target languages are incorporated as an additional attention mechanism.")
+        print("Model created: the WALS features from the source and target languages are incorporated as an additional attention mechanism.")
 
     else:
         raise Exception("WALS model type not yet implemented: %s"%(
