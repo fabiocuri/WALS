@@ -123,47 +123,55 @@ The -wals_src and -wals_tgt options should be language names as listed under the
 
 #### Possible WALS models (-wals_model) :
 
-##### Model A: uses WALS features to initialize encoder's hidden state.
+##### Model EncInitHidden: uses WALS features to initialize encoder's hidden state.
 
-A_Target (WALS information only from target language)
+EncInitHidden_Target (WALS information only from target language)
 
-A_Both (WALS information from both languages)
+EncInitHidden_Both (WALS information from both languages)
 
-##### Model B: adds WALS features to the encoder's output to initialize decoder's hidden state.
+##### Model DecInitHidden: adds WALS features to the encoder's output to initialize decoder's hidden state.
 
-B_Target (WALS information only from target language)
+DecInitHidden_Target (WALS information only from target language)
 
-B_Both (WALS information from both languages)
+DecInitHidden_Both (WALS information from both languages)
 
-##### Model C: concatenates WALS features to source words embeddings.
+##### Model WalstoSource: concatenates WALS features to source words embeddings.
 
-C_Target (WALS information only from target language)
+WalstoSource_Target (WALS information only from target language)
 
-C_Both (WALS information from both languages)
+WalstoSource_Both (WALS information from both languages)
 
-##### Model D: concatenates WALS features to target words embeddings.
+##### Model WalstoTarget: concatenates WALS features to target words embeddings.
 
-D_Target (WALS information only from target language)
+WalstoTarget_Target (WALS information only from target language)
 
-D_Both (WALS information from both languages)
+WalstoTarget_Both (WALS information from both languages)
 
-##### Model E: the WALS features are incorporated as an additional attention mechanism.
+##### Model WalsDoublyAttentive: the WALS features are incorporated as an additional attention mechanism.
 
-E_Target (WALS information only from target language)
+WalsDoublyAttentive_Target (WALS information only from target language)
 
-E_Both (WALS information from both languages)
+WalsDoublyAttentive_Both (WALS information from both languages)
 
 
 
 ### Step 4: Translate
 
+#### Models EncInitHidden and DecInitHidden:
+
 ```bash
-python translate.py -model demo-model_acc_XX.XX_ppl_XXX.XX_eX.pt -src data/src-test.txt -output pred.txt -replace_unk -verbose -wals_src src_language -wals_tgt tgt_language -wals_model model
+python translate.py -model demo-model_acc_XX.XX_ppl_XXX.XX_eX.pt -src data/src-test.txt -output pred.txt -replace_unk -verbose -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function function
+```
+
+#### Models WalstoSource and WalstoTarget:
+
+```bash
+python translate.py -model demo-model_acc_XX.XX_ppl_XXX.XX_eX.pt -src data/src-test.txt -output pred.txt -replace_unk -verbose -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function function -wals_size size
 ```
 
 Now you have a model which you can use to predict on new data. We do this by running beam search. This will output predictions into `pred.txt`.
 
-Make sure that the right source and target languages are specified when calling translate.py, as well as the WALS model that was used for training.
+Make sure that the right source and target languages are specified when calling translate.py, as well as the WALS model and wals size that were used for training!
 
 !!! note "Note"
     The predictions are going to be quite terrible, as the demo dataset is small. Try running on some larger datasets! For example you can download millions of parallel sentences for [translation](http://www.statmt.org/wmt16/translation-task.html) or [summarization](https://github.com/harvardnlp/sent-summary).
