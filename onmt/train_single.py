@@ -100,7 +100,6 @@ def main(opt, device_id):
     print('Loading WALS features from databases...')
 
     cwd = os.getcwd()
-    print(cwd)
 
     db = sqlite3.connect(cwd + '/onmt/WalsValues.db')
     cursor = db.cursor()
