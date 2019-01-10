@@ -93,8 +93,7 @@ Internally the system never touches the words themselves, but uses these indices
 ### Step 2: Run the WALS script to build the linguistic databases.
 
 ```bash
-cd onmt
-python wals.py
+python onmt/wals.py
 ```
 
 The following databases are created:
@@ -112,7 +111,7 @@ FTList.db: Features present, per feature type.
 #### Go to wals.info and download the following files: codes.csv, language.csv, parameters.csv and values.csv.
 
 ```bash
-python train.py -data data/demo -save_model demo-model -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function tanh -wals_size 10
+python3 train.py -data data/demo -save_model demo-model -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function tanh -wals_size 10
 ```
 
 The main train command is quite simple. Minimally it takes a data file
