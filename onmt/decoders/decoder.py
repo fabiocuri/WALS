@@ -78,8 +78,6 @@ class RNNDecoderBase(nn.Module):
         self.embeddings = embeddings
         self.dropout = nn.Dropout(dropout)
 
-        print(self.wals_size)
-
         # Build the RNN.
         self.rnn = self._build_rnn(rnn_type,
                                    input_size=self._input_size,
