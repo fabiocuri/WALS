@@ -155,13 +155,13 @@ WalsDoublyAttentive_Both (WALS information from both languages)
 #### Models EncInitHidden and DecInitHidden:
 
 ```bash
-python translate.py -model demo-model_acc_XX.XX_ppl_XXX.XX_eX.pt -src data/src-test.txt -output pred.txt -replace_unk -verbose -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function function
+python3 translate.py -model demo-model_acc_XX.XX_ppl_XXX.XX_eX.pt -src data/src-test.txt -output pred.txt -replace_unk -verbose -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function function
 ```
 
 #### Models WalstoSource and WalstoTarget:
 
 ```bash
-python translate.py -model demo-model_acc_XX.XX_ppl_XXX.XX_eX.pt -src data/src-test.txt -output pred.txt -replace_unk -verbose -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function function -wals_size size
+python3 translate.py -model demo-model_acc_XX.XX_ppl_XXX.XX_eX.pt -src data/src-test.txt -output pred.txt -replace_unk -verbose -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function function -wals_size size
 ```
 
 Now you have a model which you can use to predict on new data. We do this by running beam search. This will output predictions into `pred.txt`.
