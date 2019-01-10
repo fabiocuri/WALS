@@ -122,10 +122,11 @@ class EncoderInitialization(nn.Module):
     Encoder: RNNEncoder
     Decoder: StdRNNDecoder
     """
-    def __init__(self, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
+    def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
 
         self.multigpu = multigpu
         super(EncoderInitialization, self).__init__()
+        self.wals_model = wals_model
         self.encoder = encoder  
         self.decoder = decoder  
         self.MLP_target_or_both = MLP_target_or_both
@@ -155,9 +156,6 @@ class EncoderInitialization(nn.Module):
 
         dim0, dim1 = wals_features.size()
         wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
-
-        print(wals_features)
-        print(wals_features.size())
 
         tgt = tgt[:-1]  # exclude last target from inputs
 
@@ -193,10 +191,11 @@ class DecoderInitialization(nn.Module):
     Decoder: StdRNNDecoder
     """
 
-    def __init__(self, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
+    def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
 
         self.multigpu = multigpu
         super(DecoderInitialization, self).__init__()
+        self.wals_model = wals_model
         self.encoder = encoder  
         self.decoder = decoder  
         self.MLP_target_or_both = MLP_target_or_both
@@ -231,9 +230,6 @@ class DecoderInitialization(nn.Module):
 
         wals_features_modelB = wals_features.repeat(self.model_opt.dec_layers,dim1,1) # dec_layers x batch_size x rnn_size
 
-        print(wals_features)
-        print(wals_features.size())
-
         tgt = tgt[:-1]  # exclude last target from inputs
 
         enc_hidden, context = self.encoder(input=src, lengths=lengths)
@@ -260,10 +256,11 @@ class CombineWalsSourceWords(nn.Module):
     Decoder: StdRNNDecoder
     """
 
-    def __init__(self, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
+    def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
 
         self.multigpu = multigpu
         super(CombineWalsSourceWords, self).__init__()
+        self.wals_model = wals_model
         self.encoder = encoder  
         self.decoder = decoder  
         self.MLP_target_or_both = MLP_target_or_both
@@ -279,9 +276,6 @@ class CombineWalsSourceWords(nn.Module):
 
         dim0, dim1 = wals_features.size()
         wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
-
-        print(wals_features)
-        print(wals_features.size())
 
         tgt = tgt[:-1]  # exclude last target from inputs
 
@@ -308,10 +302,11 @@ class CombineWalsTargetWords(nn.Module):
     Decoder: StdRNNDecoder
     """
 
-    def __init__(self, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
+    def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
 
         self.multigpu = multigpu
         super(CombineWalsTargetWords, self).__init__()
+        self.wals_model = wals_model
         self.encoder = encoder  
         self.decoder = decoder  
         self.MLP_target_or_both = MLP_target_or_both
@@ -327,9 +322,6 @@ class CombineWalsTargetWords(nn.Module):
 
         dim0, dim1 = wals_features.size()
         wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
-
-        print(wals_features)
-        print(wals_features.size())
 
         tgt = tgt[:-1]  # exclude last target from inputs
 
@@ -357,10 +349,11 @@ class WalsDoublyAttention(nn.Module):
     Decoder: StdRNNDecoderDoublyAttentive
     """
 
-    def __init__(self, encoder, decoder, MLP_target_or_both, MLPFeatureTypes, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
+    def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, MLPFeatureTypes, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
 
         self.multigpu = multigpu
         super(WalsDoublyAttention, self).__init__()
+        self.wals_model = wals_model
         self.encoder = encoder  
         self.decoder = decoder  
         self.MLP_target_or_both = MLP_target_or_both
@@ -379,9 +372,6 @@ class WalsDoublyAttention(nn.Module):
         dim0_src, dim1_src, dim2_src = src.size()
         wals_features = wals_features.view(dim0, dim1_src, dim1) # 11 x batch_size x rnn_size
 
-        print(wals_features)
-        print(wals_features.size())
-
         tgt = tgt[:-1]  # exclude last target from inputs
         enc_hidden, context = self.encoder(input=src, lengths=lengths)
         enc_state = self.decoder.init_decoder_state(src, context, wals_features, enc_hidden)
@@ -391,8 +381,6 @@ class WalsDoublyAttention(nn.Module):
                                                        lengths, wals_features)
 
         out_total = out + out_wals
-
-        print(out_wals.size())
 
         if self.multigpu:
             # Not yet supported on multi-gpu
