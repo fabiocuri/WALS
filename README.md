@@ -111,15 +111,10 @@ FTList.db: Features present, per feature type.
 #### Go to wals.info and download the following files: codes.csv, language.csv, parameters.csv and values.csv.
 
 ```bash
-python3 train.py -data data/demo -save_model demo-model -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function tanh -wals_size 10
+python3 train.py -data data/demo -save_model demo-model -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function function -wals_size size
 ```
 
-The main train command is quite simple. Minimally it takes a data file
-and a save file.  This will run the default model, which consists of a
-2-layer LSTM with 500 hidden units on both the encoder/decoder. You
-can also add `-gpuid 1` to use (say) GPU 1.
-
-The -wals_src and -wals_tgt options should be language names as listed under the WALS dataset (see https://wals.info/languoid for codes).
+The -wals_src and -wals_tgt options should be language names as listed under the WALS dataset (see https://wals.info/languoid for codes). For -wals_model, -wals_function and -wals_size, check opts.py
 
 #### Possible WALS models (-wals_model) :
 
