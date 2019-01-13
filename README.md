@@ -66,7 +66,7 @@ Beta Features (committed):
 ### Step 1: Preprocess the data
 
 ```bash
-python preprocess.py -train_src data/src-train.txt -train_tgt data/tgt-train.txt -valid_src data/src-val.txt -valid_tgt data/tgt-val.txt -save_data data/demo
+python3 preprocess.py -train_src data/src-train.txt -train_tgt data/tgt-train.txt -valid_src data/src-val.txt -valid_tgt data/tgt-val.txt -save_data data/demo
 ```
 
 We will be working with some example data in `data/` folder.
@@ -93,7 +93,7 @@ Internally the system never touches the words themselves, but uses these indices
 ### Step 2: Run the WALS script to build the linguistic databases.
 
 ```bash
-python onmt/wals.py
+python3 onmt/wals.py
 ```
 
 The following databases are created:
