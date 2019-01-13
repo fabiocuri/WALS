@@ -368,9 +368,15 @@ class WalsDoublyAttention(nn.Module):
 
         wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both, self.MLPFeatureTypes) # 11 x rnn_size
 
+        print(wals_features.size())
+
         dim0, dim1 = wals_features.size()
         dim0_src, dim1_src, dim2_src = src.size()
-        wals_features = wals_features.view(dim0, dim1_src, dim1) # 11 x batch_size x rnn_size
+
+        wals_features = wals_features.view(1, dim0, dim1) # 1 x 11 x rnn_size
+        wals_features = wals_features.transpose(0,1) # 11 x 1 x rnn_size
+
+        wals_features = wals_features.repeat(1, dim1_src, 1) # 11 x batch_size x rnn_size
 
         tgt = tgt[:-1]  # exclude last target from inputs
         enc_hidden, context = self.encoder(input=src, lengths=lengths)
