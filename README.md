@@ -31,7 +31,7 @@ Pre-requirements: pip, git, python.
 All dependencies can be installed via:
 
 ```bash
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 Note that we currently only support PyTorch 0.4.
