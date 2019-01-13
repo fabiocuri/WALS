@@ -368,8 +368,6 @@ class WalsDoublyAttention(nn.Module):
 
         wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both, self.MLPFeatureTypes) # 11 x rnn_size
 
-        print(wals_features.size())
-
         dim0, dim1 = wals_features.size()
         dim0_src, dim1_src, dim2_src = src.size()
 
