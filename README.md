@@ -93,7 +93,8 @@ Internally the system never touches the words themselves, but uses these indices
 ### Step 2: Run the WALS script to build the linguistic databases.
 
 ```bash
-python3 onmt/wals.py
+cd onmt
+python3 wals.py
 ```
 
 The following databases are created:
