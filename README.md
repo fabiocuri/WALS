@@ -115,7 +115,7 @@ FTList.db: Features present, per feature type.
 python3 train.py -data data/demo -save_model demo-model -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function function -wals_size size -input_feed 0
 ```
 
-The -wals_src and -wals_tgt options should be language names as listed under the WALS dataset (see https://wals.info/languoid for codes). For -wals_model, -wals_function and -wals_size, check opts.py
+The -wals_src and -wals_tgt options should be language names as listed under the WALS dataset (see https://wals.info/languoid for codes). Here below, you can find the list of all possible -wals_model
 
 #### Possible WALS models (-wals_model) :
 
@@ -150,16 +150,12 @@ WalsDoublyAttentive_Target (WALS information only from target language)
 WalsDoublyAttentive_Both (WALS information from both languages)
 
 
+The WALS features can be projected into a -wals_size dimension, which is an integer. If not specified, -wals_size is 10. Note that this parameter is not required for models EncInitHidden and DecInitHidden, as they are projected into the RNN size, directly. If not specified for the other models, its standard value is 10.
+
+In respect to -wals_function, the user can either call `tanh`, `relu` or do not call it, which will not enable any function to be run upon the WALS features. 
+
 
 ### Step 4: Translate
-
-#### Models EncInitHidden and DecInitHidden:
-
-```bash
-python3 translate.py -model demo-model_acc_XX.XX_ppl_XXX.XX_eX.pt -src data/src-test.txt -output pred.txt -replace_unk -verbose -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function function
-```
-
-#### Models WalstoSource and WalstoTarget:
 
 ```bash
 python3 translate.py -model demo-model_acc_XX.XX_ppl_XXX.XX_eX.pt -src data/src-test.txt -output pred.txt -replace_unk -verbose -wals_src src_language -wals_tgt tgt_language -wals_model model -wals_function function -wals_size size
@@ -167,7 +163,7 @@ python3 translate.py -model demo-model_acc_XX.XX_ppl_XXX.XX_eX.pt -src data/src-
 
 Now you have a model which you can use to predict on new data. We do this by running beam search. This will output predictions into `pred.txt`.
 
-Make sure that the right source and target languages are specified when calling translate.py, as well as the WALS model and wals size that were used for training!
+Make sure that the right -wals_src and -wals_tgt languages are specified when calling translate.py, as well as the -wals_model, -wals_size and wals_function that were used for training!
 
 !!! note "Note"
     The predictions are going to be quite terrible, as the demo dataset is small. Try running on some larger datasets! For example you can download millions of parallel sentences for [translation](http://www.statmt.org/wmt16/translation-task.html) or [summarization](https://github.com/harvardnlp/sent-summary).
