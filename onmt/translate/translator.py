@@ -414,11 +414,14 @@ class Translator(object):
 
         if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
 
-            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both, self.MLPFeatureTypes) # 11 x rnn_size
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both, self.model.MLPFeatureTypes) # 11 x rnn_size
 
             dim0, dim1 = wals_features.size()
             dim0_src, dim1_src, dim2_src = src.size()
-            wals_features = wals_features.view(dim0, dim1_src, dim1) # 11 x batch_size x rnn_size
+
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 11 x rnn_size
+            wals_features = wals_features.transpose(0,1) # 11 x 1 x rnn_size
+            wals_features = wals_features.repeat(1, dim1_src, 1) # 11 x batch_size x rnn_size
 
             enc_states, memory_bank = self.model.encoder(src, src_lengths)
             dec_states = self.model.decoder.init_decoder_state(src, memory_bank, wals_features, enc_states, with_cache=True)
@@ -695,11 +698,15 @@ class Translator(object):
 
         if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
 
-            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both, self.MLPFeatureTypes) # 11 x rnn_size
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both, self.model.MLPFeatureTypes) # 11 x rnn_size
 
             dim0, dim1 = wals_features.size()
             dim0_src, dim1_src, dim2_src = src.size()
-            wals_features = wals_features.view(dim0, dim1_src, dim1) # 11 x batch_size x rnn_size
+
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 11 x rnn_size
+            wals_features_before = wals_features.transpose(0,1) # 11 x 1 x rnn_size
+
+            wals_features = wals_features_before.repeat(1, dim1_src, 1) # 11 x batch_size x rnn_size
 
             enc_states, memory_bank = self.model.encoder(src, src_lengths)
             dec_states = self.model.decoder.init_decoder_state(src, memory_bank, wals_features, enc_states)
@@ -764,6 +771,10 @@ class Translator(object):
                 dec_out, dec_states, attn = self.model.decoder(inp, memory_bank, dec_states, memory_lengths=memory_lengths, wals_features = wals_features, step=i)
 
             if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
+
+                dim0_src, dim1_src, dim2_src = memory_bank.size()
+
+                wals_features = wals_features_before.repeat(1, dim1_src, 1) # 11 x batch_size x rnn_size
 
                 decs_out, wals_out, dec_states, attn = self.model.decoder(inp, memory_bank, dec_states, memory_lengths=memory_lengths, wals_features = wals_features, step=i)
                 dec_out = decs_out + wals_out
@@ -889,11 +900,15 @@ class Translator(object):
 
         if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
 
-            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both, self.MLPFeatureTypes) # 11 x rnn_size
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both, self.model.MLPFeatureTypes) # 11 x rnn_size
 
             dim0, dim1 = wals_features.size()
             dim0_src, dim1_src, dim2_src = src.size()
-            wals_features = wals_features.view(dim0, dim1_src, dim1) # 11 x batch_size x rnn_size
+
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 11 x rnn_size
+            wals_features_before = wals_features.transpose(0,1) # 11 x 1 x rnn_size
+
+            wals_features = wals_features_before.repeat(1, dim1_src, 1) # 11 x batch_size x rnn_size
 
             enc_states, memory_bank = self.model.encoder(src, src_lengths)
             dec_states = self.model.decoder.init_decoder_state(src, memory_bank, wals_features, enc_states)
@@ -921,6 +936,10 @@ class Translator(object):
             dec_out, _, _ = self.model.decoder(tgt_in, memory_bank, dec_states, memory_lengths=src_lengths, wals_features = wals_features)
 
         if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
+
+            dim0_src, dim1_src, dim2_src = memory_bank.size()
+
+            wals_features = wals_features_before.repeat(1, dim1_src, 1) # 11 x batch_size x rnn_size
 
             decs_out, wals_out, _, _ = self.model.decoder(tgt_in, memory_bank, dec_states, memory_lengths=src_lengths, wals_features = wals_features)
             dec_out = decs_out + wals_out
