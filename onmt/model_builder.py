@@ -301,7 +301,6 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
     EmbeddingFeatures = nn.ModuleDict(embeddings_dic_keys)
 
     mlp_dic_keys = dict(zip(mlp_keys, mlp_list))
-    MLPFeatureTypes = nn.ModuleDict(mlp_dic_keys)
 
     # Build NMTModel(= encoder + decoder).
     device = torch.device("cuda" if gpu else "cpu")
@@ -363,7 +362,8 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
         print("Model created: concatenates WALS features from the source and target languages to target words embeddings.")
 
     elif model_opt.wals_model == 'WalsDoublyAttentive_Target':
-        
+
+        MLPFeatureTypes = nn.ModuleDict(mlp_dic_keys)
         MLP_AttentionTarget = build_doublyattentive_target(model_opt)
         print('Embeddings for WALS features and MLP models are built!')
         model = WalsDoublyAttention(model_opt.wals_model,encoder, decoder, MLP_AttentionTarget, MLPFeatureTypes, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
@@ -371,6 +371,7 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
 
     elif model_opt.wals_model == 'WalsDoublyAttentive_Both': 
 
+        MLPFeatureTypes = nn.ModuleDict(mlp_dic_keys)
         MLP_AttentionBoth = build_doublyattentive_both(model_opt)
         print('Embeddings for WALS features and MLP models are built!')
         model = WalsDoublyAttention(model_opt.wals_model,encoder, decoder, MLP_AttentionBoth, MLPFeatureTypes, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
