@@ -77,11 +77,11 @@ def build_mlp2walshiddensize_both(opt, FTInfos):
 
     return MLP2WalsHiddenBoth(num_embeddings, opt)
 
-def build_mlp_model_E_target(opt):
+def build_doublyattentive_target(opt):
 
     return MLPAttentionTarget(opt)
 
-def build_mlp_model_E_both(opt):
+def build_doublyattentive_both(opt):
 
     return MLPAttentionBoth(opt)
 
@@ -364,14 +364,14 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
 
     elif model_opt.wals_model == 'WalsDoublyAttentive_Target':
         
-        MLP_AttentionTarget = build_mlp_model__target(model_opt)
+        MLP_AttentionTarget = build_doublyattentive_target(model_opt)
         print('Embeddings for WALS features and MLP models are built!')
         model = WalsDoublyAttention(model_opt.wals_model,encoder, decoder, MLP_AttentionTarget, MLPFeatureTypes, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
         print("Model created: the WALS features from the target language are incorporated as an additional attention mechanism.")
 
     elif model_opt.wals_model == 'WalsDoublyAttentive_Both': 
 
-        MLP_AttentionBoth = build_mlp_model_E_both(model_opt)
+        MLP_AttentionBoth = build_doublyattentive_both(model_opt)
         print('Embeddings for WALS features and MLP models are built!')
         model = WalsDoublyAttention(model_opt.wals_model,encoder, decoder, MLP_AttentionBoth, MLPFeatureTypes, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
         print("Model created: the WALS features from the source and target languages are incorporated as an additional attention mechanism.")
