@@ -26,7 +26,7 @@ from onmt.models.model import EncoderInitialization, DecoderInitialization, Comb
 from onmt.utils.misc import use_gpu
 from onmt.utils.logging import logger
 
-def build_feature_embeddings(gpu, model_opt, FeatureTensors, FeaturesList, FeatureNames, Feature):
+def build_feature_embeddings(gpu, FeatureTensors, FeaturesList, FeatureNames, Feature):
 
     idx_feature = FeatureNames.index(Feature)
     embedding_dim = FeaturesList[idx_feature][2] # Result of a linear transformation (check wals.py)
@@ -293,7 +293,7 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
 
     for FeatureType in FeatureTypes:
         for Feature in FeatureTypes[FeatureType]:
-            globals()['embedding_%s' % Feature] = build_feature_embeddings(gpu, model_opt, FeatureTensors, FeaturesList, FeatureNames, Feature)   # 192 embedding structures, one for each feature.
+            globals()['embedding_%s' % Feature] = build_feature_embeddings(gpu, FeatureTensors, FeaturesList, FeatureNames, Feature)   # 192 embedding structures, one for each feature.
             embeddings_keys.append(Feature)
             embeddings_list.append(globals()['embedding_%s' % Feature])
         globals()['mlp_%s' % FeatureType] = build_mlp_feature_type(model_opt, FTInfos, FeatureTypesNames, FeatureType) # 11 MLPs, one for each feature type.
