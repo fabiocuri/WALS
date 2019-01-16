@@ -29,8 +29,8 @@ def get_feat_values(SimulationLanguages, WalsValues, FeaturesList, ListLanguages
 
     for Language in SimulationLanguages: # For each language in the simulation...
         idx_language = ListLanguages.index(Language) 
-        for FeatureType in FeatureTypes: # For each feature type...
-            for Feature in FeatureTypes[FeatureType]: # For each feature...
+        for FeatureType in FeatureTypes: # tuple
+            for Feature in FeatureType[1]: # For each feature...
                 idx_feature = FeatureNames.index(Feature)
                 FeatureValues[Language][Feature] = WalsValues[idx_language][idx_feature+1] 
                 FeatureTensors[Feature] = torch.from_numpy(np.array(range(FeaturesList[idx_feature][1] + 1)))
@@ -125,18 +125,17 @@ def main(opt, device_id):
     for i in WalsValues:
         ListLanguages.append(i[0])
 
-    FeatureTypes = defaultdict(lambda: defaultdict(list))
+    FeatureTypes = []
     for i in FTList:
-        FeatureTypes[i[0]] = i[1].split(',')
+        FeatureTypes.append((i[0], i[1].split(',')))
 
     FeatureNames = []
     for i in FeatureTypes:
-        for j in FeatureTypes[i]:
-            FeatureNames.append(j)
+        FeatureNames += i[1]
 
     FeatureTypesNames = []
     for i in FeatureTypes:
-        FeatureTypesNames.append(i)
+        FeatureTypesNames.append(i[0])
 
     FeatureValues, FeatureTensors = get_feat_values(SimulationLanguages, WalsValues, FeaturesList, ListLanguages, FeatureTypes, FeatureNames) 
 
