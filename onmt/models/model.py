@@ -16,7 +16,7 @@ def get_local_features(EmbeddingFeatures, FeatureValues, FeatureTypes, Simulatio
 
             l_pertype = []
 
-            for Feature in FeatureTypes[FeatureType]:
+            for Feature in FeatureType[1]:
 
                 # Obtain rows of features in its original embeddings, given the feature value.
                 features_row[Language][Feature] = EmbeddingFeatures[Feature](FeatureValues[Language][Feature]) 
@@ -24,16 +24,16 @@ def get_local_features(EmbeddingFeatures, FeatureValues, FeatureTypes, Simulatio
                 l_pertype.append(features_row[Language][Feature])
 
             # Concatenate features of the same type.
-            features_concat_per_type[Language][FeatureType] = torch.cat(l_pertype, dim=1) # size: 1 x "feature type"
+            features_concat_per_type[Language][FeatureType[0]] = torch.cat(l_pertype, dim=1) # size: 1 x "feature type"
 
 	    # Concatenate all feature embeddings for all feature types.
-            l_all_features.append(features_concat_per_type[Language][FeatureType])  
+            l_all_features.append(features_concat_per_type[Language][FeatureType[0]])  
  
             if model_opt.wals_model == 'WalsDoublyAttentive_Target' or model_opt.wals_model == 'WalsDoublyAttentive_Both':
 
                 # Run a MLP, for each feature type.
-                featuretypes_after_MLP[Language][FeatureType] = MLPFeatureTypes[FeatureType](features_concat_per_type[Language][FeatureType]) # size: 1 x wals_size
-                l_pertype_MLP.append(featuretypes_after_MLP[Language][FeatureType])
+                featuretypes_after_MLP[Language][FeatureType[0]] = MLPFeatureTypes[FeatureType[0]](features_concat_per_type[Language][FeatureType[0]]) # size: 1 x wals_size
+                l_pertype_MLP.append(featuretypes_after_MLP[Language][FeatureType[0]])
 
         if model_opt.wals_model == 'EncInitHidden_Target' or model_opt.wals_model == 'EncInitHidden_Both' or model_opt.wals_model == 'DecInitHidden_Target' or model_opt.wals_model == 'DecInitHidden_Both' or model_opt.wals_model == 'WalstoSource_Target' or model_opt.wals_model == 'WalstoSource_Both' or model_opt.wals_model == 'WalstoTarget_Target' or model_opt.wals_model == 'WalstoTarget_Both':
 
