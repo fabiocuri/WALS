@@ -291,8 +291,15 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
 
     embeddings_list, embeddings_keys, mlp_list, mlp_keys = [], [], [], []
 
-    for FeatureType in FeatureTypes:
-        for Feature in FeatureTypes[FeatureType]:
+    FeatureTypes_keys_sorted = sorted(list(FeatureTypes.keys())) # Names of feature types sorted alphabetically.
+
+    for FeatureType in FeatureTypes_keys_sorted:
+
+        list_features = FeatureTypes[FeatureType]
+        list_features = sorted(list(list_features)) # Names of feature sorted alphabetically.
+
+        for Feature in list_features:
+
             globals()['embedding_%s' % Feature] = build_feature_embeddings(gpu, FeatureTensors, FeaturesList, FeatureNames, Feature)   # 192 embedding structures, one for each feature.
             embeddings_keys.append(Feature)
             embeddings_list.append(globals()['embedding_%s' % Feature])
