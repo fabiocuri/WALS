@@ -25,6 +25,7 @@ from onmt.modules.embeddings import FeatureEmbedding, FeatureMLP, MLP2RNNHiddenT
 from onmt.models.model import EncoderInitialization, DecoderInitialization, CombineWalsSourceWords, CombineWalsTargetWords, WalsDoublyAttention
 from onmt.utils.misc import use_gpu
 from onmt.utils.logging import logger
+from operator import itemgetter
 
 def build_feature_embeddings(gpu, FeatureTensors, FeaturesList, FeatureNames, Feature):
 
@@ -291,21 +292,18 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
 
     embeddings_list, embeddings_keys, mlp_list, mlp_keys = [], [], [], []
 
-    FeatureTypes_keys_sorted = sorted(list(FeatureTypes.keys())) # Names of feature types sorted alphabetically.
+    for FeatureType in FeatureTypes:
 
-    for FeatureType in FeatureTypes_keys_sorted:
-
-        list_features = FeatureTypes[FeatureType]
-        list_features = sorted(list(list_features)) # Names of feature sorted alphabetically.
+        list_features = FeatureType[1]
 
         for Feature in list_features:
 
             globals()['embedding_%s' % Feature] = build_feature_embeddings(gpu, FeatureTensors, FeaturesList, FeatureNames, Feature)   # 192 embedding structures, one for each feature.
             embeddings_keys.append(Feature)
             embeddings_list.append(globals()['embedding_%s' % Feature])
-        globals()['mlp_%s' % FeatureType] = build_mlp_feature_type(model_opt, FTInfos, FeatureTypesNames, FeatureType) # 11 MLPs, one for each feature type.
-        mlp_keys.append(FeatureType)
-        mlp_list.append(globals()['mlp_%s' % FeatureType])
+        globals()['mlp_%s' % FeatureType[0]] = build_mlp_feature_type(model_opt, FTInfos, FeatureTypesNames, FeatureType[0]) # 11 MLPs, one for each feature type.
+        mlp_keys.append(FeatureType[0])
+        mlp_list.append(globals()['mlp_%s' % FeatureType[0]])
 
     embeddings_dic_keys = dict(zip(embeddings_keys, embeddings_list))
     EmbeddingFeatures = nn.ModuleDict(embeddings_dic_keys)
