@@ -28,7 +28,6 @@ def main(opt):
     print('Loading WALS features from databases...')
 
     cwd = os.getcwd()
-    print(cwd)
 
     db = sqlite3.connect(cwd + '/onmt/WalsValues.db')
     cursor = db.cursor()
@@ -54,22 +53,19 @@ def main(opt):
     for i in WalsValues:
         ListLanguages.append(i[0])
 
-    FeatureTypes = defaultdict(lambda: defaultdict(list))
+    FeatureTypes = []
     for i in FTList:
-        FeatureTypes[i[0]] = i[1].split(',')
+        FeatureTypes.append((i[0], i[1].split(',')))
 
     FeatureNames = []
     for i in FeatureTypes:
-        for j in FeatureTypes[i]:
-            FeatureNames.append(j)
+        FeatureNames += i[1]
 
     FeatureTypesNames = []
     for i in FeatureTypes:
-        FeatureTypesNames.append(i)
+        FeatureTypesNames.append(i[0])
 
     FeatureValues, FeatureTensors = get_feat_values(SimulationLanguages, WalsValues, FeaturesList, ListLanguages, FeatureTypes, FeatureNames) 
-
-    print('WALS databases loaded!')
 
     translator = build_translator(opt, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages, report_score=True)
     translator.translate(src_path=opt.src,
