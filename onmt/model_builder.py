@@ -112,6 +112,7 @@ def build_embeddings(opt, word_dict, feature_dicts, for_encoder=True):
     num_feat_embeddings = [len(feat_dict) for feat_dict in
                            feature_dicts]
 
+
     return Embeddings(word_vec_size=embedding_dim,
                       position_encoding=opt.position_encoding,
                       feat_merge=opt.feat_merge,
@@ -150,7 +151,7 @@ def build_encoder(opt, embeddings):
                           opt.bridge)
 
 
-def build_decoder(opt, embeddings, dec_size):
+def build_decoder(opt, embeddings):
     """
     Various decoder dispatcher function.
     Args:
@@ -161,7 +162,7 @@ def build_decoder(opt, embeddings, dec_size):
     if opt.wals_model == 'WalsDoublyAttentive_Target' or opt.wals_model == 'WalsDoublyAttentive_Both':
 
         return StdRNNDecoderDoublyAttentive(opt.rnn_type, opt.brnn,
-                                 opt.dec_layers, dec_size,
+                                 opt.dec_layers, opt.rnn_size,
                                  opt.global_attention,
                                  opt.global_attention_function,
                                  opt.coverage_attn,
@@ -174,19 +175,19 @@ def build_decoder(opt, embeddings, dec_size):
     else:
 
         if opt.decoder_type == "transformer":
-            return TransformerDecoder(opt.dec_layers, dec_size,
+            return TransformerDecoder(opt.dec_layers, opt.rnn_size,
                                       opt.heads, opt.transformer_ff,
                                       opt.global_attention, opt.copy_attn,
                                       opt.self_attn_type,
                                       opt.dropout, embeddings)
         elif opt.decoder_type == "cnn":
-            return CNNDecoder(opt.dec_layers, dec_size,
+            return CNNDecoder(opt.dec_layers, opt.rnn_size,
                               opt.global_attention, opt.copy_attn,
                               opt.cnn_kernel_width, opt.dropout,
                               embeddings)
         elif opt.input_feed:
             return InputFeedRNNDecoder(opt.rnn_type, opt.brnn,
-                                       opt.dec_layers, dec_size,
+                                       opt.dec_layers, opt.rnn_size,
                                        opt.global_attention,
                                        opt.global_attention_function,
                                        opt.coverage_attn,
@@ -197,7 +198,7 @@ def build_decoder(opt, embeddings, dec_size):
                                        opt.reuse_copy_attn)
         else:
             return StdRNNDecoder(opt.wals_model, opt.rnn_type, opt.brnn,
-                                 opt.dec_layers, dec_size,
+                                 opt.dec_layers, opt.rnn_size,
                                  opt.wals_size, opt.global_attention,
                                  opt.global_attention_function,
                                  opt.coverage_attn,
@@ -284,15 +285,7 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
 
         tgt_embeddings.word_lut.weight = src_embeddings.word_lut.weight
 
-    if model_opt.wals_model == 'WalstoDecHidden_Target' or model_opt.wals_model == 'WalstoDecHidden_Both':
-        #dec_size = model_opt.rnn_size + 2*model_opt.wals_size
-        dec_size = model_opt.rnn_size
-    else:
-        dec_size = model_opt.rnn_size
-
-    decoder = build_decoder(model_opt, tgt_embeddings, dec_size)
-
-
+    decoder = build_decoder(model_opt, tgt_embeddings)
 
     # Wals
 
