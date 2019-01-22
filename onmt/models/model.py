@@ -398,7 +398,7 @@ class WalsDoublyAttention(nn.Module):
 class WalstoDecHidden(nn.Module):
 
     """
-    Model F: concatenates WALS features to the decoder's hidden state.
+    Model F: the WALS features are concatenated to the decoder's hidden state.
 
     Encoder: RNNEncoder
     Decoder: StdRNNDecoder
