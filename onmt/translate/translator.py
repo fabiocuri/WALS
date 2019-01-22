@@ -427,6 +427,15 @@ class Translator(object):
             dec_states = self.model.decoder.init_decoder_state(src, memory_bank, wals_features, enc_states, with_cache=True)
 
 
+        if self.model.wals_model == 'WalstoDecHidden_Target' or self.model.wals_model == 'WalstoDecHidden_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, enc_states) 
 
 
         # Tile states and memory beam_size times.
@@ -490,6 +499,10 @@ class Translator(object):
 
                 decs_out, wals_out, dec_states, attn = self.model.decoder(decoder_input, memory_bank, dec_states, memory_lengths=memory_lengths, wals_features = wals_features, step=step)
                 dec_out = decs_out + wals_out
+
+            if self.model.wals_model == 'WalstoDecHidden_Target' or self.model.wals_model == 'WalstoDecHidden_Both':
+
+                dec_out, dec_states, attn = self.model.decoder(decoder_input, memory_bank, dec_states, memory_lengths=memory_lengths, wals_features = wals_features, step=step)
 
 
             # Generator forward.
@@ -640,8 +653,6 @@ class Translator(object):
             _, src_lengths = batch.src
 
 
-
-
         if self.model.wals_model == 'EncInitHidden_Target' or self.model.wals_model == 'EncInitHidden_Both':
 
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
@@ -711,7 +722,15 @@ class Translator(object):
             enc_states, memory_bank = self.model.encoder(src, src_lengths)
             dec_states = self.model.decoder.init_decoder_state(src, memory_bank, wals_features, enc_states)
 
+        if self.model.wals_model == 'WalstoDecHidden_Target' or self.model.wals_model == 'WalstoDecHidden_Both':
 
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, enc_states) 
 
 
         if src_lengths is None:
@@ -752,8 +771,6 @@ class Translator(object):
             inp = inp.unsqueeze(2)
 
 
-
-
             if self.model.wals_model == 'EncInitHidden_Target' or self.model.wals_model == 'EncInitHidden_Both':
 
                 dec_out, dec_states, attn = self.model.decoder(inp, memory_bank, dec_states, memory_lengths=memory_lengths, step=i)
@@ -778,6 +795,11 @@ class Translator(object):
 
                 decs_out, wals_out, dec_states, attn = self.model.decoder(inp, memory_bank, dec_states, memory_lengths=memory_lengths, wals_features = wals_features, step=i)
                 dec_out = decs_out + wals_out
+
+            if self.model.wals_model == 'WalstoDecHidden_Target' or self.model.wals_model == 'WalstoDecHidden_Both':
+
+                dec_out, dec_states, attn = self.model.decoder(inp, memory_bank, dec_states, memory_lengths=memory_lengths, wals_features = wals_features, step=i)
+
 
             dec_out = dec_out.squeeze(0)
 
@@ -913,6 +935,16 @@ class Translator(object):
             enc_states, memory_bank = self.model.encoder(src, src_lengths)
             dec_states = self.model.decoder.init_decoder_state(src, memory_bank, wals_features, enc_states)
 
+        if self.model.wals_model == 'WalstoDecHidden_Target' or self.model.wals_model == 'WalstoDecHidden_Both':
+
+            wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            dim0, dim1 = wals_features.size()
+            wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
+
+            enc_states, memory_bank = self.model.encoder(src, src_lengths)
+            dec_states = self.model.decoder.init_decoder_state(src, memory_bank, enc_states) 
+
         #  (2) if a target is specified, compute the 'goldScore'
         #  (i.e. log likelihood) of the target under the model
         tt = torch.cuda if self.cuda else torch
@@ -943,6 +975,11 @@ class Translator(object):
 
             decs_out, wals_out, _, _ = self.model.decoder(tgt_in, memory_bank, dec_states, memory_lengths=src_lengths, wals_features = wals_features)
             dec_out = decs_out + wals_out
+
+        if self.model.wals_model == 'WalstoDecHidden_Target' or self.model.wals_model == 'WalstoDecHidden_Both':
+
+            dec_out, _, _ = self.model.decoder(tgt_in, memory_bank, dec_states, memory_lengths=memory_lengths, wals_features = wals_features)
+
 
 
 
