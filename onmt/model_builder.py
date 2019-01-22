@@ -22,7 +22,7 @@ from onmt.decoders.cnn_decoder import CNNDecoder
 
 from onmt.modules import Embeddings, CopyGenerator
 from onmt.modules.embeddings import FeatureEmbedding, FeatureMLP, MLP2RNNHiddenTarget, MLP2RNNHiddenBoth, MLP2WalsHiddenTarget, MLP2WalsHiddenBoth, MLPAttentionTarget, MLPAttentionBoth
-from onmt.models.model import EncoderInitialization, DecoderInitialization, CombineWalsSourceWords, CombineWalsTargetWords, WalsDoublyAttention
+from onmt.models.model import EncoderInitialization, DecoderInitialization, CombineWalsSourceWords, CombineWalsTargetWords, WalsDoublyAttention, WalstoDecHidden
 from onmt.utils.misc import use_gpu
 from onmt.utils.logging import logger
 from operator import itemgetter
@@ -150,7 +150,7 @@ def build_encoder(opt, embeddings):
                           opt.bridge)
 
 
-def build_decoder(opt, embeddings):
+def build_decoder(opt, embeddings, dec_size):
     """
     Various decoder dispatcher function.
     Args:
@@ -161,7 +161,7 @@ def build_decoder(opt, embeddings):
     if opt.wals_model == 'WalsDoublyAttentive_Target' or opt.wals_model == 'WalsDoublyAttentive_Both':
 
         return StdRNNDecoderDoublyAttentive(opt.rnn_type, opt.brnn,
-                                 opt.dec_layers, opt.rnn_size,
+                                 opt.dec_layers, dec_size,
                                  opt.global_attention,
                                  opt.global_attention_function,
                                  opt.coverage_attn,
@@ -174,19 +174,19 @@ def build_decoder(opt, embeddings):
     else:
 
         if opt.decoder_type == "transformer":
-            return TransformerDecoder(opt.dec_layers, opt.rnn_size,
+            return TransformerDecoder(opt.dec_layers, dec_size,
                                       opt.heads, opt.transformer_ff,
                                       opt.global_attention, opt.copy_attn,
                                       opt.self_attn_type,
                                       opt.dropout, embeddings)
         elif opt.decoder_type == "cnn":
-            return CNNDecoder(opt.dec_layers, opt.rnn_size,
+            return CNNDecoder(opt.dec_layers, dec_size,
                               opt.global_attention, opt.copy_attn,
                               opt.cnn_kernel_width, opt.dropout,
                               embeddings)
         elif opt.input_feed:
             return InputFeedRNNDecoder(opt.rnn_type, opt.brnn,
-                                       opt.dec_layers, opt.rnn_size,
+                                       opt.dec_layers, dec_size,
                                        opt.global_attention,
                                        opt.global_attention_function,
                                        opt.coverage_attn,
@@ -197,7 +197,7 @@ def build_decoder(opt, embeddings):
                                        opt.reuse_copy_attn)
         else:
             return StdRNNDecoder(opt.wals_model, opt.rnn_type, opt.brnn,
-                                 opt.dec_layers, opt.rnn_size,
+                                 opt.dec_layers, dec_size,
                                  opt.wals_size, opt.global_attention,
                                  opt.global_attention_function,
                                  opt.coverage_attn,
@@ -284,7 +284,15 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
 
         tgt_embeddings.word_lut.weight = src_embeddings.word_lut.weight
 
-    decoder = build_decoder(model_opt, tgt_embeddings)
+    if model_opt.wals_model == 'WalstoDecHidden_Target' or model_opt.wals_model == 'WalstoDecHidden_Both':
+        #dec_size = model_opt.rnn_size + 2*model_opt.wals_size
+        dec_size = model_opt.rnn_size
+    else:
+        dec_size = model_opt.rnn_size
+
+    decoder = build_decoder(model_opt, tgt_embeddings, dec_size)
+
+
 
     # Wals
 
@@ -385,11 +393,23 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
         model = WalsDoublyAttention(model_opt.wals_model,encoder, decoder, MLP_AttentionBoth, MLPFeatureTypes, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
         print("Model created: the WALS features from the source and target languages are incorporated as an additional attention mechanism.")
 
+    elif model_opt.wals_model == 'WalstoDecHidden_Target':
+        
+        MLP2WALSHiddenSize_Target = build_mlp2walshiddensize_target(model_opt, FTInfos)   
+        print('Embeddings for WALS features and MLP models are built!') 
+        model = WalstoDecHidden(model_opt.wals_model, encoder, decoder, MLP2WALSHiddenSize_Target, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
+        print("Model created: concatenates WALS features from the target language to decoder hidden state.")
+
+    elif model_opt.wals_model == 'WalstoDecHidden_Both':
+        
+        MLP2WALSHiddenSize_Both = build_mlp2walshiddensize_both(model_opt, FTInfos)   
+        print('Embeddings for WALS features and MLP models are built!') 
+        model = WalstoDecHidden(model_opt.wals_model, encoder, decoder, MLP2WALSHiddenSize_Both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
+        print("Model created: concatenates WALS features from the target language to decoder hidden state.")
+
     else:
         raise Exception("WALS model type not yet implemented: %s"%(
                         opt.wals_model))
-
-    print(next(model.parameters()).is_cuda)
 
     model.model_type = model_opt.model_type
 
