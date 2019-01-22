@@ -221,6 +221,7 @@ def parse_cmd_line():
             help="""WALS model type.""")
     parser.add_argument('--delete_model_files', required=True, type=str, choices=['no', 'all-but-best', 'all'],
             help='Delete model files after generating translations?')
+    parser.add_argument('--ngpus', type=int, required=False, default=4)
 
     return parser.parse_args()
 
@@ -257,6 +258,7 @@ if __name__=="__main__":
             'Model prefix did not result in any files: %s'%MODEL_PREFIX
 
     # translation options
+    ngpus=args.ngpus
     gpuid=None
     verbose=args.verbose
     overwrite_previous_translations = False
@@ -277,10 +279,10 @@ if __name__=="__main__":
             hyp_fname = "%s.translations-valid"%str(model_fname)
 
             if not os.path.isfile(hyp_fname) or overwrite_previous_translations:
-                if gpuid==1:
+                if gpuid==ngpus-1:
                     gpuid = 0
                 else:
-                    gpuid = 1
+                    gpuid += 1
 
                 #print("gpuid: %i"%gpuid)
                 translation_jobs.append( (source_fname, model_fname, hyp_fname, beam_size, args.wals_src, args.wals_tgt, args.wals_function, args.wals_model_type, gpuid, 'valid', verbose) )
@@ -309,7 +311,7 @@ if __name__=="__main__":
         print("Finished all jobs in the pool!")
         print()
 
-        print("Computing metrics (BLEU, METEOR) on validation set with a pool of %i workers..."%(num_threads))
+        print("Computing metrics (BLEU, METEOR) on validation set...")
         # compute BLEU and METEOR scores for all translations
         for hyp_fname in glob("%s*.pt.translations-valid"%str(MODEL_PREFIX)):
             ref_fname = VALID_REF
@@ -348,6 +350,7 @@ if __name__=="__main__":
     beam_size = 10
     num_threads = 1
     overwrite_previous_translations = False
+    gpuid=None
     print("Translating test set with a pool of %i workers..."%(num_threads))
     with Pool(num_threads) as p:
         model_fname = best_model
@@ -355,7 +358,12 @@ if __name__=="__main__":
         source_fname = TEST_SRC
         #img_feats_fname = TEST_IMG
         if not os.path.isfile(hyp_fname) or overwrite_previous_translations:
-            gpuid = 0 if gpuid is None or gpuid==1 else 1
+            #gpuid = 0 if gpuid is None or gpuid==1 else 1
+            if gpuid==ngpus-1:
+                gpuid = 0
+            else:
+                gpuid += 1
+
             p.starmap(translate_with_pool, [(source_fname, model_fname, hyp_fname, beam_size, args.wals_src, args.wals_tgt, args.wals_function, args.wals_model_type, gpuid, 'test2016', verbose)])
             p.close()
             p.join()
