@@ -447,7 +447,7 @@ def train_opts(parser):
     group.add_argument('-wals_tgt', required=True, type=str, help="Wals target language.")
 
     parser.add_argument('-wals_model', required=True, type=str,
-                        choices=['EncInitHidden_Target', 'EncInitHidden_Both', 'DecInitHidden_Target', 'DecInitHidden_Both', 'WalstoSource_Target', 'WalstoSource_Both', 'WalstoTarget_Target', 'WalstoTarget_Both', 'WalsDoublyAttentive_Target', 'WalsDoublyAttentive_Both'],
+                        choices=['EncInitHidden_Target', 'EncInitHidden_Both', 'DecInitHidden_Target', 'DecInitHidden_Both', 'WalstoSource_Target', 'WalstoSource_Both', 'WalstoTarget_Target', 'WalstoTarget_Both', 'WalsDoublyAttentive_Target', 'WalsDoublyAttentive_Both', 'WalstoDecHidden_Target', 'WalstoDecHidden_Both'],
                         help="""WALS NMT model type.""")
 
 
@@ -573,7 +573,7 @@ def translate_opts(parser):
     group.add_argument('-wals_tgt', required=True, type=str, help="Wals target language.")
 
     parser.add_argument('-wals_model', required=True, type=str,
-                        choices=['EncInitHidden_Target', 'EncInitHidden_Both', 'DecInitHidden_Target', 'DecInitHidden_Both', 'WalstoSource_Target', 'WalstoSource_Both', 'WalstoTarget_Target', 'WalstoTarget_Both', 'WalsDoublyAttentive_Target', 'WalsDoublyAttentive_Both'],
+                        choices=['EncInitHidden_Target', 'EncInitHidden_Both', 'DecInitHidden_Target', 'DecInitHidden_Both', 'WalstoSource_Target', 'WalstoSource_Both', 'WalstoTarget_Target', 'WalstoTarget_Both', 'WalsDoublyAttentive_Target', 'WalsDoublyAttentive_Both', 'WalstoDecHidden_Target', 'WalstoDecHidden_Both'],
                         help="""WALS NMT model type.""")
     group.add_argument('-wals_function', type=str, default=False,
                        choices=['tanh', 'relu'],
