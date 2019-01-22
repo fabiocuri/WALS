@@ -35,7 +35,7 @@ def get_local_features(EmbeddingFeatures, FeatureValues, FeatureTypes, Simulatio
                 featuretypes_after_MLP[Language][FeatureType[0]] = MLPFeatureTypes[FeatureType[0]](features_concat_per_type[Language][FeatureType[0]]) # size: 1 x wals_size
                 l_pertype_MLP.append(featuretypes_after_MLP[Language][FeatureType[0]])
 
-        if model_opt.wals_model == 'EncInitHidden_Target' or model_opt.wals_model == 'EncInitHidden_Both' or model_opt.wals_model == 'DecInitHidden_Target' or model_opt.wals_model == 'DecInitHidden_Both' or model_opt.wals_model == 'WalstoSource_Target' or model_opt.wals_model == 'WalstoSource_Both' or model_opt.wals_model == 'WalstoTarget_Target' or model_opt.wals_model == 'WalstoTarget_Both':
+        if model_opt.wals_model == 'EncInitHidden_Target' or model_opt.wals_model == 'EncInitHidden_Both' or model_opt.wals_model == 'DecInitHidden_Target' or model_opt.wals_model == 'DecInitHidden_Both' or model_opt.wals_model == 'WalstoSource_Target' or model_opt.wals_model == 'WalstoSource_Both' or model_opt.wals_model == 'WalstoTarget_Target' or model_opt.wals_model == 'WalstoTarget_Both' or model_opt.wals_model == 'WalstoDecHidden_Target' or model_opt.wals_model == 'WalstoDecHidden_Both':
 
             # Concatenate all embeddings of the features.
             out[Language] = torch.cat(l_all_features, dim=1) # size: 1 x 200
@@ -46,12 +46,12 @@ def get_local_features(EmbeddingFeatures, FeatureValues, FeatureTypes, Simulatio
             out[Language] = torch.cat(l_pertype_MLP, dim=0) # size: 11 x wals_size
 
     # Select WALS for both languages or target only.
-    if model_opt.wals_model == 'EncInitHidden_Target' or model_opt.wals_model == 'DecInitHidden_Target' or model_opt.wals_model == 'WalstoSource_Target' or model_opt.wals_model == 'WalstoTarget_Target' or model_opt.wals_model == 'WalsDoublyAttentive_Target':
+    if model_opt.wals_model == 'EncInitHidden_Target' or model_opt.wals_model == 'DecInitHidden_Target' or model_opt.wals_model == 'WalstoSource_Target' or model_opt.wals_model == 'WalstoTarget_Target' or model_opt.wals_model == 'WalsDoublyAttentive_Target' or model_opt.wals_model == 'WalstoDecHidden_Target':
 
         wals_features = out[SimulationLanguages[1]] # [1 x 200] or [11 x wals_size]
         wals_features = MLP_target_or_both(wals_features) # [1 x rnn_size] or [1 x wals_size] or [11 x rnn_size]
 
-    if model_opt.wals_model == 'EncInitHidden_Both' or model_opt.wals_model == 'DecInitHidden_Both' or model_opt.wals_model == 'WalstoSource_Both' or model_opt.wals_model == 'WalstoTarget_Both' or model_opt.wals_model == 'WalsDoublyAttentive_Both':
+    if model_opt.wals_model == 'EncInitHidden_Both' or model_opt.wals_model == 'DecInitHidden_Both' or model_opt.wals_model == 'WalstoSource_Both' or model_opt.wals_model == 'WalstoTarget_Both' or model_opt.wals_model == 'WalsDoublyAttentive_Both' or model_opt.wals_model == 'WalstoDecHidden_Both':
 
         wals_features = torch.cat((out[SimulationLanguages[0]], out[SimulationLanguages[1]]) , 1) # [1 x 2.200] or [11 x 2.wals_size]
         wals_features = MLP_target_or_both(wals_features) # [1 x rnn_size] or [1 x wals_size] or [11 x rnn_size]
@@ -392,3 +392,51 @@ class WalsDoublyAttention(nn.Module):
             attns = None
 
         return out_total, attns, dec_state
+
+
+
+class WalstoDecHidden(nn.Module):
+
+    """
+    Model F: concatenates WALS features to the decoder's hidden state.
+
+    Encoder: RNNEncoder
+    Decoder: StdRNNDecoder
+    """
+
+    def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
+
+        self.multigpu = multigpu
+        super(WalstoDecHidden, self).__init__()
+        self.wals_model = wals_model
+        self.encoder = encoder  
+        self.decoder = decoder  
+        self.MLP_target_or_both = MLP_target_or_both
+        self.EmbeddingFeatures = EmbeddingFeatures  
+        self.FeatureValues = FeatureValues 
+        self.FeatureTypes = FeatureTypes
+        self.SimulationLanguages = SimulationLanguages
+        self.model_opt = model_opt
+
+    def forward(self, src, tgt, lengths, dec_state=None):
+
+        wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both) # 1 x rnn_size
+
+        dim0, dim1 = wals_features.size()
+        wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
+
+        tgt = tgt[:-1]  # exclude last target from inputs
+
+        enc_hidden, context = self.encoder(input=src, lengths=lengths)
+        enc_state = self.decoder.init_decoder_state(src, context, enc_hidden)
+        out, dec_state, attns = self.decoder(tgt, context,
+                                             enc_state if dec_state is None
+                                             else dec_state,
+                                             lengths, wals_features)
+
+        if self.multigpu:
+            # Not yet supported on multi-gpu
+            dec_state = None
+            attns = None
+
+        return out, attns, dec_state
