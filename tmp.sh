@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 #SBATCH -n 1
-#SBATCH -t 0-1:00:00
-#SBATCH -p gpu_short
+#SBATCH -t 0-3:00:00
+#SBATCH -p gpu
 
 
 TIMESTAMP=`date +%s`
