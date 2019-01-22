@@ -152,6 +152,7 @@ WalsDoublyAttentive_Both (WALS information from both languages)
 ##### Model WalstoDecHidden: the WALS features are concatenated to the decoder's hidden state.
 
 WalstoDecHidden_Target (WALS information only from target language)
+
 WalstoDecHidden_Both (WALS information from both languages)
 
 
