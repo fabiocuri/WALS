@@ -233,7 +233,7 @@ if __name__=="__main__":
     #METEOR_SCRIPT='%s/meteor-1.5.jar' % args.meteor_script
 
     OUTPUT_DIR = '{}/{}'.format(args.output, os.path.basename(args.model))
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    #os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     # validation set files
     VALID_SRC='%s/endefr.val.%s' % (args.data, args.src_language)
@@ -376,7 +376,7 @@ if __name__=="__main__":
 
     summary = {'model_name': model_names[0],
        'valid': {
-           'epoch': idx_max,
+           'epoch': idx_max+1,
            'bleu': numpy.array(validation_bleus, dtype='float32'),
            #'meteor': numpy.array(validation_meteors, dtype='float32')
         },
@@ -392,22 +392,28 @@ if __name__=="__main__":
     #summaries.append(summary)
 
     # delete model files?
+    if not args.verbose:
+        print("Delete model files? %s"%args.delete_model_files)
+
     if not args.delete_model_files == 'no':
         if args.delete_model_files == 'all':
             # delete all files
             for model_fname in glob("%s*.pt"%str(MODEL_PREFIX)):
-                print("Deleting model file: %s"%model_fname)
-                #os.remove(model_fname)
+                if args.verbose:
+                    print("Deleting model file: %s"%model_fname)
+                os.remove(model_fname)
 
         elif args.delete_model_files == 'all-but-best':
             # delete all models but the one selected
             for model_fname in glob("%s*.pt"%str(MODEL_PREFIX)):
                 if model_fname == best_model:
-                    print("NOT deleting model file: %s"%model_fname)
+                    if args.verbose:
+                        print("NOT deleting model file: %s"%model_fname)
                     continue
                 else:
-                    print("Deleting model file: %s"%model_fname)
-                    #os.remove(model_fname)
+                    if args.verbose:
+                        print("Deleting model file: %s"%model_fname)
+                    os.remove(model_fname)
 
         else:
             raise Exception("Not implemented!")
