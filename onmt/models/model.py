@@ -420,10 +420,10 @@ class WalstoDecHidden(nn.Module):
 
     def forward(self, src, tgt, lengths, dec_state=None):
 
-        wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both) # 1 x rnn_size
+        wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both) # 1 x wals_size
 
         dim0, dim1 = wals_features.size()
-        wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
+        wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
 
         tgt = tgt[:-1]  # exclude last target from inputs
 
