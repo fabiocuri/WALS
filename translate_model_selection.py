@@ -103,7 +103,7 @@ def compute_meteors(hypotheses_fname, references_fname, split='valid'):
         # write translations after BPE-to-word post-processing to temporary file
         psubword.communicate()
 
-        for hypfile in glob(hypotheses_fname):
+        for hypfile in sorted(glob(hypotheses_fname)):
             # post-process hypothesis translations
             with tempfile.NamedTemporaryFile() as temp_hyp:
                 # call another python script to compute scores
@@ -157,7 +157,7 @@ def compute_bleus(hypotheses_fname, references_fname, split='valid', bleu_script
         # write translations after BPE-to-word post-processing to temporary file
         psubword.communicate()
 
-        for hypfile in glob(hypotheses_fname):
+        for hypfile in sorted(glob(hypotheses_fname)):
             # call another python script to compute validation set BLEU scores
             pcat  = Popen(['cat', hypfile], stdout=PIPE, stderr=fnull)
             # convert translations from subwords into words
@@ -233,7 +233,7 @@ if __name__=="__main__":
     BLEU_SCRIPT="./tools/multi-bleu.perl"
     #METEOR_SCRIPT='%s/meteor-1.5.jar' % args.meteor_script
 
-    OUTPUT_DIR = '{}/{}'.format(args.output, os.path.basename(args.model))
+    #OUTPUT_DIR = '{}/{}'.format(args.output, os.path.basename(args.model))
     #os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     # validation set files
@@ -275,11 +275,11 @@ if __name__=="__main__":
 
         source_fname = VALID_SRC
         #img_feats_fname = TEST_IMG
-        for model_fname in glob("%s*.pt"%str(MODEL_PREFIX)):
+        for model_fname in sorted(glob("%s*.pt"%str(MODEL_PREFIX))):
             hyp_fname = "%s.translations-valid"%str(model_fname)
 
             if not os.path.isfile(hyp_fname) or overwrite_previous_translations:
-                if gpuid==ngpus-1:
+                if gpuid==ngpus-1 or gpuid==None:
                     gpuid = 0
                 else:
                     gpuid += 1
@@ -288,16 +288,15 @@ if __name__=="__main__":
                 translation_jobs.append( (source_fname, model_fname, hyp_fname, beam_size, args.wals_src, args.wals_tgt, args.wals_function, args.wals_model_type, gpuid, 'valid', verbose) )
             else:
                 # check that all jobs were translated as expected
-                valid_set_size_match( hyp_fname, raise_exception=True, verbose=verbose )
-                #if not valid_set_size_match( hyp_fname, raise_exception=False, verbose=verbose ):
-                #    # translate once again
-                #    if gpuid==1:
-                #        gpuid = 0
-                #    else:
-                #        gpuid = 1
+                #valid_set_size_match( hyp_fname, raise_exception=True, verbose=verbose )
+                if not valid_set_size_match( hyp_fname, raise_exception=False, verbose=verbose ):
+                    # translate once again
+                    if gpuid==1:
+                        gpuid = 0
+                    else:
+                        gpuid = 1
 
-                #    #print("gpuid: %i"%gpuid)
-                #    translation_jobs.append( (source_fname, model_fname, hyp_fname, beam_size, args.wals_src, args.wals_tgt, args.wals_function, args.wals_model_type, gpuid, 'valid', verbose) )
+                    translation_jobs.append( (source_fname, model_fname, hyp_fname, beam_size, args.wals_src, args.wals_tgt, args.wals_function, args.wals_model_type, gpuid, 'valid', verbose) )
 
 
 
@@ -313,7 +312,7 @@ if __name__=="__main__":
 
         print("Computing metrics (BLEU, METEOR) on validation set...")
         # compute BLEU and METEOR scores for all translations
-        for hyp_fname in glob("%s*.pt.translations-valid"%str(MODEL_PREFIX)):
+        for hyp_fname in sorted(glob("%s*.pt.translations-valid"%str(MODEL_PREFIX))):
             ref_fname = VALID_REF
             #model_name_, validation_meteor_, translation_file_ = compute_meteors(hyp_fname, ref_fname, 'valid')
             model_name_, validation_bleu_,   translation_file_ = compute_bleus(hyp_fname, ref_fname, 'valid', BLEU_SCRIPT)
@@ -328,7 +327,7 @@ if __name__=="__main__":
         print("Finished!")
 
         # check that all jobs were translated as expected
-        for hyp_fname in glob("%s*.pt.translations-valid"%str(MODEL_PREFIX)):
+        for hyp_fname in sorted(glob("%s*.pt.translations-valid"%str(MODEL_PREFIX))):
             valid_set_size_match( hyp_fname, raise_exception=True, verbose=verbose )
 
     # get max and min validation BLEU
@@ -359,7 +358,7 @@ if __name__=="__main__":
         #img_feats_fname = TEST_IMG
         if not os.path.isfile(hyp_fname) or overwrite_previous_translations:
             #gpuid = 0 if gpuid is None or gpuid==1 else 1
-            if gpuid==ngpus-1:
+            if gpuid==ngpus-1 or gpuid==None:
                 gpuid = 0
             else:
                 gpuid += 1
@@ -406,14 +405,14 @@ if __name__=="__main__":
     if not args.delete_model_files == 'no':
         if args.delete_model_files == 'all':
             # delete all files
-            for model_fname in glob("%s*.pt"%str(MODEL_PREFIX)):
+            for model_fname in sorted(glob("%s*.pt"%str(MODEL_PREFIX))):
                 if args.verbose:
                     print("Deleting model file: %s"%model_fname)
                 os.remove(model_fname)
 
         elif args.delete_model_files == 'all-but-best':
             # delete all models but the one selected
-            for model_fname in glob("%s*.pt"%str(MODEL_PREFIX)):
+            for model_fname in sorted(glob("%s*.pt"%str(MODEL_PREFIX))):
                 if model_fname == best_model:
                     if args.verbose:
                         print("NOT deleting model file: %s"%model_fname)
