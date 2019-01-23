@@ -203,9 +203,9 @@ def parse_cmd_line():
     parser.add_argument(
         '--model', type=str, required=True,
         help="Path to model as a prefix up to N_TRAINING_STEPS number (this is the prefix in *_steps_10000.pt)")
-    parser.add_argument(
-        '--output', type=str, required=True,
-        help='Output directory (it will be created if necessary)')
+    #parser.add_argument(
+    #    '--output', type=str, required=True,
+    #    help='Output directory (it will be created if necessary)')
     parser.add_argument("--wals_src", type=str, required=True,
             help="""WALS source language code (three letters).""")
     parser.add_argument("--wals_tgt", type=str, required=True,
