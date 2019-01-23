@@ -161,9 +161,9 @@ def build_decoder(opt, embeddings):
 
     if opt.wals_model == 'WalsDoublyAttentive_Target' or opt.wals_model == 'WalsDoublyAttentive_Both':
 
-        return StdRNNDecoderDoublyAttentive(opt.rnn_type, opt.brnn,
+        return StdRNNDecoderDoublyAttentive(opt.wals_model, opt.rnn_type, opt.brnn,
                                  opt.dec_layers, opt.rnn_size,
-                                 opt.global_attention,
+                                 opt.wals_size, opt.global_attention,
                                  opt.global_attention_function,
                                  opt.coverage_attn,
                                  opt.context_gate,
