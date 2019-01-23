@@ -104,9 +104,8 @@ class RNNDecoderBase(nn.Module):
         # Set up the standard attention.
         self._coverage = coverage_attn
         self.attn = onmt.modules.GlobalAttention(
-            hidden_size, coverage=coverage_attn,
-            attn_type=attn_type, attn_func=attn_func
-        )
+            hidden_size, self.wals_model, self.wals_size, coverage=coverage_attn,
+            attn_type=attn_type, attn_func=attn_func)
 
         # Set up a separated copy attention layer, if needed.
         self._copy = False
@@ -248,7 +247,7 @@ class StdRNNDecoder(RNNDecoderBase):
             else:
                 rnn_output, decoder_final = self.rnn_wals(emb, state.hidden)
             
-        if self.wals_model == 'EncInitHidden_Target' or self.wals_model == 'EncInitHidden_Both' or self.wals_model == 'DecInitHidden_Target' or self.wals_model == 'DecInitHidden_Both' or self.wals_model == 'WalstoSource_Target' or self.wals_model == 'WalstoSource_Both':
+        if self.wals_model == 'EncInitHidden_Target' or self.wals_model == 'EncInitHidden_Both' or self.wals_model == 'DecInitHidden_Target' or self.wals_model == 'DecInitHidden_Both' or self.wals_model == 'WalstoSource_Target' or self.wals_model == 'WalstoSource_Both' or self.wals_model == 'WalstoDecHidden_Target' or self.wals_model == 'WalstoDecHidden_Both':
 
             # Run the StdRNNDecoder forward pass of the RNN.
 
@@ -257,32 +256,68 @@ class StdRNNDecoder(RNNDecoderBase):
             else:
                 rnn_output, decoder_final = self.rnn(emb, state.hidden)
 
-        # Check
-        tgt_len, tgt_batch, _ = tgt.size()
-        output_len, output_batch, _ = rnn_output.size()
-        aeq(tgt_len, output_len)
-        aeq(tgt_batch, output_batch)
-        # END
+        if self.wals_model == 'EncInitHidden_Target' or self.wals_model == 'EncInitHidden_Both' or self.wals_model == 'DecInitHidden_Target' or self.wals_model == 'DecInitHidden_Both' or self.wals_model == 'WalstoSource_Target' or self.wals_model == 'WalstoSource_Both' or self.wals_model == 'WalstoTarget_Target' or self.wals_model == 'WalstoTarget_Both':
 
-        # Calculate the attention.
-        decoder_outputs, p_attn = self.attn(
-            rnn_output.transpose(0, 1).contiguous(),
-            memory_bank.transpose(0, 1),
-            memory_lengths=memory_lengths
-        )
-        attns["std"] = p_attn
+            # Check
+            tgt_len, tgt_batch, _ = tgt.size()
+            output_len, output_batch, _ = rnn_output.size()
+            aeq(tgt_len, output_len)
+            aeq(tgt_batch, output_batch)
+            # END
 
-        # Calculate the context gate.
-        if self.context_gate is not None:
-            decoder_outputs = self.context_gate(
-                emb.view(-1, emb.size(2)),
-                rnn_output.view(-1, rnn_output.size(2)),
-                decoder_outputs.view(-1, decoder_outputs.size(2))
+            # Calculate the attention.
+            decoder_outputs, p_attn = self.attn(
+                rnn_output.transpose(0, 1).contiguous(),
+                memory_bank.transpose(0, 1),
+                memory_lengths=memory_lengths
             )
-            decoder_outputs = \
-                decoder_outputs.view(tgt_len, tgt_batch, self.hidden_size)
+            attns["std"] = p_attn
 
-        decoder_outputs = self.dropout(decoder_outputs)
+            # Calculate the context gate.
+            if self.context_gate is not None:
+                decoder_outputs = self.context_gate(
+                    emb.view(-1, emb.size(2)),
+                    rnn_output.view(-1, rnn_output.size(2)),
+                    decoder_outputs.view(-1, decoder_outputs.size(2))
+                )
+                decoder_outputs = \
+                    decoder_outputs.view(tgt_len, tgt_batch, self.hidden_size)
+
+            decoder_outputs = self.dropout(decoder_outputs)
+
+        if self.wals_model == 'WalstoDecHidden_Target' or self.wals_model == 'WalstoDecHidden_Both':
+
+            s_len, batch, emb_dim = rnn_output.size()
+            wals_features_rnn_output = wals_features.repeat(s_len, batch, 1) # s_len x batch_size x wals_size
+
+            rnn_output = torch.cat((wals_features_rnn_output, rnn_output, wals_features_rnn_output), 2)
+
+            # Check
+            tgt_len, tgt_batch, _ = tgt.size()
+            output_len, output_batch, _ = rnn_output.size()
+            aeq(tgt_len, output_len)
+            aeq(tgt_batch, output_batch)
+            # END
+
+            # Calculate the attention.
+            decoder_outputs, p_attn = self.attn(
+                rnn_output.transpose(0, 1).contiguous(),
+                memory_bank.transpose(0, 1),
+                memory_lengths=memory_lengths
+            )
+            attns["std"] = p_attn
+
+            # Calculate the context gate.
+            if self.context_gate is not None:
+                decoder_outputs = self.context_gate(
+                    emb.view(-1, emb.size(2)),
+                    rnn_output.view(-1, rnn_output.size(2)),
+                    decoder_outputs.view(-1, decoder_outputs.size(2))
+                )
+                decoder_outputs = \
+                    decoder_outputs.view(tgt_len, tgt_batch, self.hidden_size)
+
+            decoder_outputs = self.dropout(decoder_outputs)
 
         return decoder_final, decoder_outputs, attns
 
@@ -541,8 +576,8 @@ class RNNDecoderStateDoublyAttentive(DecoderState):
 
 class RNNDecoderBaseDoublyAttentive(nn.Module):
 
-    def __init__(self, rnn_type, bidirectional_encoder, num_layers,
-                 hidden_size, attn_type="general", attn_func="softmax",
+    def __init__(self, wals_model, rnn_type, bidirectional_encoder, num_layers,
+                 hidden_size, wals_size, attn_type="general", attn_func="softmax",
                  coverage_attn=False, context_gate=None,
                  copy_attn=False, dropout=0.0, embeddings=None,
                  reuse_copy_attn=False):
@@ -550,6 +585,8 @@ class RNNDecoderBaseDoublyAttentive(nn.Module):
         super(RNNDecoderBaseDoublyAttentive, self).__init__()
 
         # Basic attributes.
+        self.wals_model = wals_model
+        self.wals_size = wals_size
         self.decoder_type = 'rnn'
         self.bidirectional_encoder = bidirectional_encoder
         self.num_layers = num_layers
@@ -578,12 +615,12 @@ class RNNDecoderBaseDoublyAttentive(nn.Module):
         self._coverage = coverage_attn
 
         self.attn = onmt.modules.GlobalAttention(
-            hidden_size, coverage=coverage_attn,
+            hidden_size, self.wals_model, self.wals_size, coverage=coverage_attn,
             attn_type=attn_type, attn_func=attn_func
         )
 
         self.attn_wals = onmt.modules.GlobalAttention(
-            hidden_size, coverage=False,
+            hidden_size, self.wals_model, self.wals_size, coverage=False,
             attn_type=attn_type, attn_func=attn_func
         )
 

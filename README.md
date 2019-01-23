@@ -149,6 +149,12 @@ WalsDoublyAttentive_Target (WALS information only from target language)
 
 WalsDoublyAttentive_Both (WALS information from both languages)
 
+##### Model WalstoDecHidden: the WALS features are concatenated to the decoder's hidden state.
+
+WalstoDecHidden_Target (WALS information only from target language)
+
+WalstoDecHidden_Both (WALS information from both languages)
+
 
 The WALS features can be projected into a -wals_size dimension, which is an integer. If not specified, -wals_size is 10. Note that this parameter is not required for models EncInitHidden and DecInitHidden, as they are projected into the RNN size, directly. If not specified for the other models, its standard value is 10.
 

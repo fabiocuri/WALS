@@ -114,7 +114,7 @@ class RNNEncoder(EncoderBase):
 
                     memory_bank = unpack(memory_bank)[0]
 
-            if self.wals_model == 'DecInitHidden_Target' or self.wals_model == 'DecInitHidden_Both' or self.wals_model == 'WalstoTarget_Target' or self.wals_model == 'WalstoTarget_Both' or self.wals_model == 'WalsDoublyAttentive_Target' or self.wals_model == 'WalsDoublyAttentive_Both':
+            if self.wals_model == 'DecInitHidden_Target' or self.wals_model == 'DecInitHidden_Both' or self.wals_model == 'WalstoTarget_Target' or self.wals_model == 'WalstoTarget_Both' or self.wals_model == 'WalstoDecHidden_Target' or self.wals_model == 'WalstoDecHidden_Both' or self.wals_model == 'WalsDoublyAttentive_Target' or self.wals_model == 'WalsDoublyAttentive_Both':
 
                 packed_emb = emb
 

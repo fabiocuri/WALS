@@ -67,11 +67,22 @@ class GlobalAttention(nn.Module):
 
     """
 
-    def __init__(self, dim, coverage=False, attn_type="dot",
+    def __init__(self, dim, wals_model, wals_size, coverage=False, attn_type="dot",
                  attn_func="softmax"):
         super(GlobalAttention, self).__init__()
 
-        self.dim = dim
+        self.wals_model = wals_model
+        self.wals_size = wals_size
+
+        self.dim_proj = dim
+
+        if self.wals_model == 'WalstoDecHidden_Target' or self.wals_model == 'WalstoDecHidden_Both':
+            self.increment = 2*self.wals_size
+            self.dim = dim + self.increment
+        else:
+            self.dim = dim
+            self.increment = 0
+
         assert attn_type in ["dot", "general", "mlp"], (
             "Please select a valid attention type.")
         self.attn_type = attn_type
@@ -80,14 +91,22 @@ class GlobalAttention(nn.Module):
         self.attn_func = attn_func
 
         if self.attn_type == "general":
-            self.linear_in = nn.Linear(dim, dim, bias=False)
+            if self.wals_model == 'WalstoDecHidden_Target' or self.wals_model == 'WalstoDecHidden_Both':   
+                self.linear_in = nn.Linear(self.dim, dim, bias=False)
+            else:
+                self.linear_in = nn.Linear(dim, dim, bias=False)
+
         elif self.attn_type == "mlp":
             self.linear_context = nn.Linear(dim, dim, bias=False)
             self.linear_query = nn.Linear(dim, dim, bias=True)
             self.v = nn.Linear(dim, 1, bias=False)
         # mlp wants it with bias
         out_bias = self.attn_type == "mlp"
-        self.linear_out = nn.Linear(dim * 2, dim, bias=out_bias)
+
+        if self.wals_model == 'WalstoDecHidden_Target' or self.wals_model == 'WalstoDecHidden_Both':   
+            self.linear_out = nn.Linear(dim * 2 + self.increment, dim, bias=out_bias)
+        else:
+            self.linear_out = nn.Linear(dim * 2, dim, bias=out_bias)
 
         if coverage:
             self.linear_cover = nn.Linear(1, dim, bias=False)
@@ -109,14 +128,14 @@ class GlobalAttention(nn.Module):
         src_batch, src_len, src_dim = h_s.size()
         tgt_batch, tgt_len, tgt_dim = h_t.size()
         aeq(src_batch, tgt_batch)
-        aeq(src_dim, tgt_dim)
-        aeq(self.dim, src_dim)
+        #aeq(src_dim, tgt_dim)
+        #aeq(self.dim, src_dim)
 
         if self.attn_type in ["general", "dot"]:
             if self.attn_type == "general":
                 h_t_ = h_t.view(tgt_batch * tgt_len, tgt_dim)
                 h_t_ = self.linear_in(h_t_)
-                h_t = h_t_.view(tgt_batch, tgt_len, tgt_dim)
+                h_t = h_t_.view(tgt_batch, tgt_len, self.dim_proj)
             h_s_ = h_s.transpose(1, 2)
             # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
             return torch.bmm(h_t, h_s_)
@@ -162,8 +181,8 @@ class GlobalAttention(nn.Module):
         batch, source_l, dim = memory_bank.size()
         batch_, target_l, dim_ = source.size()
         aeq(batch, batch_)
-        aeq(dim, dim_)
-        aeq(self.dim, dim)
+        #aeq(dim, dim_)
+        #aeq(self.dim, dim)
         if coverage is not None:
             batch_, source_l_ = coverage.size()
             aeq(batch, batch_)
@@ -175,6 +194,7 @@ class GlobalAttention(nn.Module):
             memory_bank = torch.tanh(memory_bank)
 
         # compute attention scores, as in Luong et al.
+
         align = self.score(source, memory_bank)
 
         if memory_lengths is not None:
@@ -194,7 +214,7 @@ class GlobalAttention(nn.Module):
         c = torch.bmm(align_vectors, memory_bank)
 
         # concatenate
-        concat_c = torch.cat([c, source], 2).view(batch*target_l, dim*2)
+        concat_c = torch.cat([c, source], 2).view(batch*target_l, dim*2+self.increment)
         attn_h = self.linear_out(concat_c).view(batch, target_l, dim)
         if self.attn_type in ["general", "dot"]:
             attn_h = torch.tanh(attn_h)
