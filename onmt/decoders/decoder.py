@@ -576,8 +576,8 @@ class RNNDecoderStateDoublyAttentive(DecoderState):
 
 class RNNDecoderBaseDoublyAttentive(nn.Module):
 
-    def __init__(self, rnn_type, bidirectional_encoder, num_layers,
-                 hidden_size, attn_type="general", attn_func="softmax",
+    def __init__(self, wals_model, rnn_type, bidirectional_encoder, num_layers,
+                 hidden_size, wals_size, attn_type="general", attn_func="softmax",
                  coverage_attn=False, context_gate=None,
                  copy_attn=False, dropout=0.0, embeddings=None,
                  reuse_copy_attn=False):
@@ -585,6 +585,8 @@ class RNNDecoderBaseDoublyAttentive(nn.Module):
         super(RNNDecoderBaseDoublyAttentive, self).__init__()
 
         # Basic attributes.
+        self.wals_model = wals_model
+        self.wals_size = wals_size
         self.decoder_type = 'rnn'
         self.bidirectional_encoder = bidirectional_encoder
         self.num_layers = num_layers
@@ -613,12 +615,12 @@ class RNNDecoderBaseDoublyAttentive(nn.Module):
         self._coverage = coverage_attn
 
         self.attn = onmt.modules.GlobalAttention(
-            hidden_size, coverage=coverage_attn,
+            hidden_size, self.wals_model, self.wals_size, coverage=coverage_attn,
             attn_type=attn_type, attn_func=attn_func
         )
 
         self.attn_wals = onmt.modules.GlobalAttention(
-            hidden_size, coverage=False,
+            hidden_size, self.wals_model, self.wals_size, coverage=False,
             attn_type=attn_type, attn_func=attn_func
         )
 
