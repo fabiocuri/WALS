@@ -11,8 +11,11 @@
 
 from __future__ import division
 
+import sys
+import numpy
 import onmt.inputters as inputters
 import onmt.utils
+import torch.tensor
 
 from onmt.utils.logging import logger
 
@@ -92,6 +95,8 @@ class Trainer(object):
                  norm_method="sents", grad_accum_count=1, n_gpu=1, gpu_rank=1,
                  gpu_verbose_level=0, report_manager=None, model_saver=None):
 
+        #TODO include WALS features for all languages in the experiment.
+
         # Basic attributes.
         self.model = model
         self.train_loss = train_loss
@@ -152,6 +157,9 @@ class Trainer(object):
 
             reduce_counter = 0
             for i, batch in enumerate(train_iter):
+
+                #TODO access WALS features (ex. self.wals_features['lang_code']).
+
                 if self.n_gpu == 0 or (i % self.n_gpu == self.gpu_rank):
                     if self.gpu_verbose_level > 1:
                         logger.info("GpuRank %d: index: %d accum: %d"
@@ -177,6 +185,8 @@ class Trainer(object):
                             normalization = sum(onmt.utils.distributed
                                                 .all_gather_list
                                                 (normalization))
+
+                            # TODO: pass WALS features into _gradient_accumulation()
 
                         self._gradient_accumulation(
                             true_batchs, normalization, total_stats,
@@ -230,6 +240,11 @@ class Trainer(object):
         stats = onmt.utils.Statistics()
 
         for batch in valid_iter:
+
+            #TODO: access wals features for the language pairs from batch variable.
+            #src_language = batch.examples[0].src_language
+            #tgt_language = batch.examples[0].tgt_language
+
             src = inputters.make_features(batch, 'src', self.data_type)
             if self.data_type == 'text':
                 _, src_lengths = batch.src
@@ -238,15 +253,31 @@ class Trainer(object):
 
             tgt = inputters.make_features(batch, 'tgt')
 
-            # F-prop through the model.
-            outputs, attns, _ = self.model(src, tgt, src_lengths)
+            def process_minibatch(src, tgt, src_lengths, flipping):
+                # F-prop through the model.
+                #TODO pass in the WALS features to self.model()
+                outputs, attns, _ = self.model(src, tgt, src_lengths, dec_state=None, flipping=flipping)
 
-            # Compute loss.
-            batch_stats = self.valid_loss.monolithic_compute_loss(
-                batch, outputs, attns)
+                # Compute loss.
+                batch_stats = self.valid_loss.monolithic_compute_loss(
+                    batch, outputs, attns)
 
-            # Update statistics.
-            stats.update(batch_stats)
+                # Update statistics.
+                stats.update(batch_stats)
+
+            if min(batch.indices) > (len(batch.dataset.examples)//2)-1:
+                # we are in the upper half
+                flipping=True
+                process_minibatch(src, tgt, src_lengths, flipping)
+            elif max(batch.indices) < (len(batch.dataset.examples)//2)-1:
+                # we are in the lower half
+                flipping=False
+                process_minibatch(src, tgt, src_lengths, flipping)
+            else:
+                # we are in gray territory :O
+                # skip minibatch
+                continue
+
 
         # Set model back to training mode.
         self.model.train()
@@ -280,33 +311,80 @@ class Trainer(object):
                 # 1. Create truncated target.
                 tgt = tgt_outer[j: j + trunc_size]
 
-                # 2. F-prop all but generator.
-                if self.grad_accum_count == 1:
-                    self.model.zero_grad()
-                outputs, attns, dec_state = \
-                    self.model(src, tgt, src_lengths, dec_state)
+                def process_minibatch(src, tgt, src_lengths, dec_state, flipping):
+                    # 2. F-prop all but generator.
+                    if self.grad_accum_count == 1:
+                        self.model.zero_grad()
 
-                # 3. Compute loss in shards for memory efficiency.
-                batch_stats = self.train_loss.sharded_compute_loss(
-                    batch, outputs, attns, j,
-                    trunc_size, self.shard_size, normalization)
-                total_stats.update(batch_stats)
-                report_stats.update(batch_stats)
+                    #TODO: pass in the WALS features into self.model()
+                    outputs, attns, dec_state = \
+                        self.model(src, tgt, src_lengths, dec_state, flipping)
 
-                # 4. Update the parameters and statistics.
-                if self.grad_accum_count == 1:
-                    # Multi GPU gradient gather
-                    if self.n_gpu > 1:
-                        grads = [p.grad.data for p in self.model.parameters()
-                                 if p.requires_grad
-                                 and p.grad is not None]
-                        onmt.utils.distributed.all_reduce_and_rescale_tensors(
-                            grads, float(1))
-                    self.optim.step()
+                    # 3. Compute loss in shards for memory efficiency.
+                    # Compute loss (monolithic).
+                    batch_stats = self.train_loss.sharded_compute_loss(
+                        batch, outputs, attns, j,
+                        trunc_size, self.shard_size, normalization)
+                    total_stats.update(batch_stats)
+                    report_stats.update(batch_stats)
 
-                # If truncated, don't backprop fully.
-                if dec_state is not None:
-                    dec_state.detach()
+                    # 4. Update the parameters and statistics.
+                    if self.grad_accum_count == 1:
+                        # Multi GPU gradient gather
+                        if self.n_gpu > 1:
+                            grads = [p.grad.data for p in self.model.parameters()
+                                     if p.requires_grad
+                                     and p.grad is not None]
+                            onmt.utils.distributed.all_reduce_and_rescale_tensors(
+                                grads, float(1))
+                        self.optim.step()
+
+                    # If truncated, don't backprop fully.
+                    if dec_state is not None:
+                        dec_state.detach()
+
+                #print("batch.indices: ", type(batch.indices), batch.indices)
+                #print("batch.dataset.examples: ", type(batch.dataset.examples), len(batch.dataset.examples))
+                #sys.exit(1)
+                if min(batch.indices) > (len(batch.dataset.examples)//2)-1:
+                    # we are in the upper half
+                    #print("1", end="")
+                    flipping=True
+                    process_minibatch(src, tgt, src_lengths, dec_state, flipping)
+                elif max(batch.indices) < (len(batch.dataset.examples)//2)-1:
+                    # we are in the lower half
+                    #print("0", end="")
+                    flipping=False
+                    process_minibatch(src, tgt, src_lengths, dec_state, flipping)
+                else:
+                    # we are in gray territory :O
+                    # skip minibatch
+                    return
+                    #print("-")
+                    #print("batch.indices: ", type(batch.indices), batch.indices)
+                    #idxs_lower = batch.indices > (len(batch.dataset.examples)//2)-1
+                    #idxs_upper= []
+                    #for curr in idxs_lower:
+                    #    idxs_upper.append(1 - curr)
+                    #idxs_upper = idxs_upper[0]
+                    #print("idxs_lower: ", idxs_lower)
+                    #print("idxs_upper: ", idxs_upper)
+                    #print("dec_state: ", dec_state)
+                    
+                    #src_lower = src[ :,idxs_lower,: ]
+                    #tgt_lower = tgt[ :,idxs_lower,: ]
+                    #src_lengths_lower = src_lengths[ idxs_lower ]
+                    #dec_state_lower = dec_state
+
+                    #src_upper = src[ :,idxs_upper,: ]
+                    #tgt_upper = tgt[ :,idxs_upper,: ]
+                    #src_lengths_upper = src_lengths[ idxs_upper ]
+                    #dec_state_upper = dec_state
+
+                    #flipping=False
+                    #process_minibatch(src_lower, tgt_lower, src_lengths_lower, dec_state_lower, flipping)
+                    #flipping=True
+                    #process_minibatch(src_upper, tgt_upper, src_lengths_upper, dec_state_upper, flipping)
 
         # in case of multi step gradient accumulation,
         # update only after accum batches

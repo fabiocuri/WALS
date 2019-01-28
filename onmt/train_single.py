@@ -94,7 +94,8 @@ def training_opt_postprocessing(opt, device_id):
 
 
 def main(opt, device_id):
-
+    #TODO delete all these lines related to WALS features
+    #begin
     SimulationLanguages = [opt.wals_src, opt.wals_tgt]
 
     print('Loading WALS features from databases...')
@@ -140,6 +141,8 @@ def main(opt, device_id):
     FeatureValues, FeatureTensors = get_feat_values(SimulationLanguages, WalsValues, FeaturesList, ListLanguages, FeatureTypes, FeatureNames) 
 
     print('WALS databases loaded!')
+    #end
+    #TODO: load wals features from command-line (wals.npz)
 
     # FeatureValues: defaultdict with feature values, per language.
     # FeatureTensors: tensor of possible outputs, per feature.
@@ -175,6 +178,8 @@ def main(opt, device_id):
                     % (j, len(fields[feat].vocab)))
 
     # Build model.
+    #TODO: remove all parameters related to WALS features: FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages
+    #TODO: include four parameter related to WALS features: the four numpy arrays separately
     model = build_model(model_opt, opt, fields, checkpoint, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages)
     n_params, enc, dec = _tally_parameters(model)
     logger.info('encoder: %d' % enc)

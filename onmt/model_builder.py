@@ -3,6 +3,7 @@ This file is for models creation, which consults options
 and creates each encoder and decoder accordingly.
 """
 
+import sys
 import torch
 import torch.nn as nn
 from torch.nn.init import xavier_uniform_
@@ -27,6 +28,7 @@ from onmt.utils.misc import use_gpu
 from onmt.utils.logging import logger
 from operator import itemgetter
 
+#TODO: delete
 def build_feature_embeddings(gpu, FeatureTensors, FeaturesList, FeatureNames, Feature):
 
     idx_feature = FeatureNames.index(Feature)
@@ -41,6 +43,7 @@ def build_feature_embeddings(gpu, FeatureTensors, FeaturesList, FeatureNames, Fe
                       num_embeddings,
                       dic)
 
+#TODO: delete
 def build_mlp_feature_type(opt, FTInfos, FeatureTypesNames, FeatureType):
     
     idx_featuretype = FeatureTypesNames.index(FeatureType)
@@ -49,6 +52,7 @@ def build_mlp_feature_type(opt, FTInfos, FeatureTypesNames, FeatureType):
     return FeatureMLP(num_embeddings,
                       opt.wals_size)
 
+#TODO: delete
 def build_mlp2rnnhiddensize_target(opt, FTInfos):
 
     num_embeddings=0
@@ -57,6 +61,7 @@ def build_mlp2rnnhiddensize_target(opt, FTInfos):
 
     return MLP2RNNHiddenTarget(num_embeddings, opt)
 
+#TODO: delete
 def build_mlp2rnnhiddensize_both(opt, FTInfos):
 
     num_embeddings=0
@@ -65,6 +70,7 @@ def build_mlp2rnnhiddensize_both(opt, FTInfos):
 
     return MLP2RNNHiddenBoth(num_embeddings, opt)
 
+#TODO: delete
 def build_mlp2walshiddensize_target(opt, FTInfos):
 
     num_embeddings=0
@@ -73,6 +79,7 @@ def build_mlp2walshiddensize_target(opt, FTInfos):
 
     return MLP2WalsHiddenTarget(num_embeddings, opt)
 
+#TODO: delete
 def build_mlp2walshiddensize_both(opt, FTInfos):
 
     num_embeddings=0
@@ -81,10 +88,12 @@ def build_mlp2walshiddensize_both(opt, FTInfos):
 
     return MLP2WalsHiddenBoth(num_embeddings, opt)
 
+#TODO: delete
 def build_doublyattentive_target(opt):
 
     return MLPAttentionTarget(opt)
 
+#TODO: delete
 def build_doublyattentive_both(opt):
 
     return MLPAttentionBoth(opt)
@@ -159,6 +168,7 @@ def build_decoder(opt, embeddings):
         embeddings (Embeddings): vocab embeddings for this decoder.
     """
 
+    #TODO: delete
     if opt.wals_model == 'WalsDoublyAttentive_Target' or opt.wals_model == 'WalsDoublyAttentive_Both':
 
         return StdRNNDecoderDoublyAttentive(opt.wals_model, opt.rnn_type, opt.brnn,
@@ -209,6 +219,8 @@ def build_decoder(opt, embeddings):
                                  opt.reuse_copy_attn)
 
 
+#TODO: delete all parameters related to WALS: FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages
+#TODO: include four numpy arrays (from wals.npz)
 def load_test_model(opt, dummy_opt, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages, model_path=None):
 
     if model_path is None:
@@ -222,6 +234,9 @@ def load_test_model(opt, dummy_opt, FeatureValues, FeatureTensors, FeatureTypes,
     for arg in dummy_opt:
         if arg not in model_opt:
             model_opt.__dict__[arg] = dummy_opt[arg]
+
+    #TODO: delete all parameters related to WALS: FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages
+    #TODO: include four numpy arrays (from wals.npz)
     model = build_base_model(model_opt, fields, use_gpu(opt), FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages, checkpoint)
     model.eval()
     model.generator.eval()
@@ -229,6 +244,8 @@ def load_test_model(opt, dummy_opt, FeatureValues, FeatureTensors, FeatureTypes,
     return fields, model, model_opt
 
 
+#TODO: delete all parameters related to WALS: FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages
+#TODO: include four numpy arrays (from wals.npz)
 def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages, checkpoint=None):
 
     """
@@ -452,10 +469,14 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
 
     return model
 
-
+#TODO: delete all parameters related to WALS: FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages
+#TODO: include four numpy arrays (from wals.npz)
 def build_model(model_opt, opt, fields, checkpoint, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages):
     """ Build the Model """
     logger.info('Building model...')
+
+    #TODO: delete all parameters related to WALS: FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages
+    #TODO: include four numpy arrays (from wals.npz)
     model = build_base_model(model_opt, fields,
                              use_gpu(opt), FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages, checkpoint)
     logger.info(model)

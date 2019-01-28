@@ -30,6 +30,9 @@ def build_loss_compute(model, tgt_vocab, opt, train=True):
         compute = NMTLossCompute(
             model.generator, tgt_vocab,
             label_smoothing=opt.label_smoothing if train else 0.0)
+        #compute = NMTWALSLossCompute(
+        #    model.generator, tgt_vocab,
+        #    label_smoothing=opt.label_smoothing if train else 0.0)
     compute.to(device)
 
     return compute
@@ -313,3 +316,62 @@ def shards(state, shard_size, eval_only=False):
                                      [v_chunk.grad for v_chunk in v_split]))
         inputs, grads = zip(*variables)
         torch.autograd.backward(inputs, grads)
+
+class NMTWALSLossCompute(LossComputeBase):
+    """
+    Standard NMT Loss Computation.
+    """
+
+    def __init__(self, generator, tgt_vocab, normalization="sents",
+                 label_smoothing=0.0):
+        super(NMTWALSLossCompute, self).__init__(generator, tgt_vocab)
+        raise Exception("Do not use me.")
+        self.sparse = not isinstance(generator[1], nn.LogSoftmax)
+        if label_smoothing > 0:
+            self.criterion = LabelSmoothingLoss(
+                label_smoothing, len(tgt_vocab), ignore_index=self.padding_idx
+            )
+        elif self.sparse:
+            self.criterion = SparsemaxLoss(
+                ignore_index=self.padding_idx, size_average=False
+            )
+        else:
+            self.criterion = nn.NLLLoss(
+                ignore_index=self.padding_idx, reduction='sum'
+            )
+
+    def _make_shard_state(self, batch, output, range_, attns=None):
+        print("MAKE SHARD STATE")
+        return {
+            "output": output,
+            "target": batch.tgt[range_[0] + 1: range_[1]],
+            "source_full": batch.src,
+            "target_full": batch.tgt,
+            "flipped": batch.flipped
+        }
+
+    def _compute_loss(self, batch, output, target, source_full, target_full, flipped):
+        bottled_output = self._bottle(output)
+        if self.sparse:
+            # for sparsemax loss, the loss function operates on the raw output
+            # vector, not a probability vector. Hence it's only necessary to
+            # apply the first part of the generator here.
+            scores = self.generator[0](bottled_output)
+        else:
+            scores = self.generator(bottled_output)
+
+        # if we have flipped the src/tgt in the minibatch, we must make sure the true "target" is actually the flipped source.
+        if flipped:
+            print("FLIPPED")
+            gtruth = source_full.view(-1)
+        else:
+            print("NOT FLIPPED")
+            gtruth = target_full.view(-1)
+
+        loss = self.criterion(scores, gtruth)
+        stats = self._stats(loss.clone(), scores, gtruth)
+
+        return loss, stats
+
+
+
