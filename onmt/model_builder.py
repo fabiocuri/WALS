@@ -398,7 +398,7 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
         MLP2WALSHiddenSize_Both = build_mlp2walshiddensize_both(model_opt, FTInfos)   
         print('Embeddings for WALS features and MLP models are built!') 
         model = WalstoDecHidden(model_opt.wals_model, encoder, decoder, MLP2WALSHiddenSize_Both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
-        print("Model created: concatenates WALS features from the target language to decoder hidden state.")
+        print("Model created: concatenates WALS features from the source and target languages to decoder hidden state.")
 
     else:
         raise Exception("WALS model type not yet implemented: %s"%(
