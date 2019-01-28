@@ -22,7 +22,9 @@ import numpy as np
 from onmt.train_single import get_feat_values
 
 def main(opt):
-
+    
+    #TODO: delete all lines related to WALS
+    #begin
     SimulationLanguages = [opt.wals_src, opt.wals_tgt]
 
     print('Loading WALS features from databases...')
@@ -66,7 +68,10 @@ def main(opt):
         FeatureTypesNames.append(i[0])
 
     FeatureValues, FeatureTensors = get_feat_values(SimulationLanguages, WalsValues, FeaturesList, ListLanguages, FeatureTypes, FeatureNames) 
+    #end
 
+    #TODO: load wals features from command-line (wals.npz)
+    #TODO: remove all parameters related to WALS features and include four numpy vectors that describe WALS
     translator = build_translator(opt, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages, report_score=True)
     translator.translate(src_path=opt.src,
                          tgt_path=opt.tgt,

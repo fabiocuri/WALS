@@ -402,12 +402,22 @@ def load_vocabulary(vocabulary_path, tag=""):
 
 class OrderedIterator(torchtext.data.Iterator):
     """ Ordered Iterator Class """
+    #TODO: Return code to original OpenNMT code by uncommenting the entire __init__() function below.
+    def __init__(self, dataset=None, batch_size=None, batch_size_fn=None, device=None, train=None,
+            sort=None, sort_within_batch=None, repeat=None, shuffle=None):
+        # call the parent's constructor where the shuffling/sorting is decided
+        # always setting shuffling/sorting to False
+        super(OrderedIterator, self).__init__(dataset=dataset, batch_size=batch_size,
+            batch_size_fn=batch_size_fn, device=device, train=train,
+            shuffle=False, sort=False, sort_within_batch=True, repeat=False)
 
     def create_batches(self):
         """ Create batches """
         if self.train:
             def _pool(data, random_shuffler):
-                for p in torchtext.data.batch(data, self.batch_size * 100):
+                #TODO: Return code to original OpenNMT code by uncommenting the 1 line below.
+                #for p in torchtext.data.batch(data, self.batch_size * 100):
+                for p in torchtext.data.batch(data, self.batch_size):
                     p_batch = torchtext.data.batch(
                         sorted(p, key=self.sort_key),
                         self.batch_size, self.batch_size_fn)

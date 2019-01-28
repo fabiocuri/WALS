@@ -2,7 +2,49 @@
 import torch.nn as nn
 from collections import defaultdict
 import torch
+import numpy
+import sys
 
+def sort_batch(data, seq_len):
+    """ Sort the data (B, T, D) and sequence lengths
+    """
+    sorted_seq_len, sorted_idx = seq_len.sort(0, descending=True)
+    sorted_data = data[:,sorted_idx,:]
+    return sorted_data, sorted_seq_len, sorted_idx
+
+def srctgt_swap_probability(src, tgt, lengths, tgt_lengths, SimulationLanguages):
+    flipped = False
+    swap_prob = 0.5
+    prob = numpy.random.random_sample()
+    # flip source/target
+    if prob <= swap_prob:
+        flipped = True
+        print("Swapping src/tgt...")
+        src, tgt = tgt, src
+        SimulationLanguages[0], SimulationLanguages[1] = SimulationLanguages[1], SimulationLanguages[0]
+        lengths, tgt_lengths = tgt_lengths, lengths
+
+        # we are swapping src/tgt, so we need to re-sort the minibatch according to the new source (old target) lengths
+        #sorted_src_lengths, sorted_idx = lengths.sort(0, descending=True)
+        #sorted_src = src[:,sorted_idx,:]
+        sorted_src, sorted_src_lengths, sorted_idx = sort_batch(src, lengths)
+        src = sorted_src
+        #lengths = sorted_src_lengths
+        lengths = None
+
+    else:
+        print("NOT swapping src/tgt...")
+
+    return src, tgt, lengths, tgt_lengths, SimulationLanguages, flipped
+
+
+def flip_simulation_languages(SimulationLanguages, flip):
+    if flip:
+        SimulationLanguages[0], SimulationLanguages[1] = SimulationLanguages[1], SimulationLanguages[0]
+    return SimulationLanguages
+
+
+#TODO: delete function entirely
 def get_local_features(EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, MLP_target_or_both=None, MLPFeatureTypes=None):
 
     features_row, features_concat_per_type, featuretypes_after_MLP = defaultdict(lambda: defaultdict(int)), defaultdict(lambda: defaultdict(int)), defaultdict(lambda: defaultdict(int))
@@ -58,6 +100,10 @@ def get_local_features(EmbeddingFeatures, FeatureValues, FeatureTypes, Simulatio
 
     return wals_features
 
+#TODO: create a function where given the four numpy arrays denoting the WALS features and
+# a list with strings with language codes in an experiments, i.e. ['eng', 'ger', 'fre'],
+# it returns the wals feature embeddings for these languages.
+# if the model type uses attention over feature types, return a tensor 
 
 class NMTModel(nn.Module):
     """
@@ -122,6 +168,9 @@ class EncoderInitialization(nn.Module):
     Encoder: RNNEncoder
     Decoder: StdRNNDecoder
     """
+    #TODO: remove parameters related to WALS: MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages
+    # include the four numpy vectors denoting WALS features (for all languages)
+    # include a list of string with language codes for this particular experiments, i.e. ['eng', 'ger', 'fre']
     def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
 
         self.multigpu = multigpu
@@ -150,9 +199,27 @@ class EncoderInitialization(nn.Module):
 
         return ret
 
-    def forward(self, src, tgt, lengths, dec_state=None):
+    # TODO: include parameters src_language, tgt_language (coming from batch variable)
+    def forward(self, src, tgt, lengths, dec_state=None, flipping=False):
 
+        #TODOa: flipping language idxs in SimulationLanguages variable should do the job for passing it into get_local_features(.)
+        #TODOa: flip variables src/tgt
+        #TODOa: flip variables lengths/tgt_lengths
+        #print("lengths before swap: ", type(lengths), lengths)
+        #print("tgt_lengths before swap: ", type(tgt_lengths), tgt_lengths)
+        
+        self.SimulationLanguages = flip_simulation_languages(self.SimulationLanguages, flipping)
+
+        #print("lengths after swap: ", type(lengths), lengths)
+        #print("tgt_lengths after swap: ", type(tgt_lengths), tgt_lengths)
+
+        #TODO: remove parameters related to WALS: MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages
+        # include the four numpy vectors denoting WALS features (for all languages)
+        # include a list of string with language codes for this particular experiments, i.e. ['eng', 'ger', 'fre']
         wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both) # 1 x rnn_size
+
+        #TODO: for this particular language pair (given in src_language, tgt_language parameters),
+        # extract the WALS features and use only these.
 
         dim0, dim1 = wals_features.size()
         wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
@@ -191,6 +258,9 @@ class DecoderInitialization(nn.Module):
     Decoder: StdRNNDecoder
     """
 
+    #TODO: remove parameters related to WALS: MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages
+    # include the four numpy vectors denoting WALS features (for all languages)
+    # include a list of string with language codes for this particular experiments, i.e. ['eng', 'ger', 'fre']
     def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
 
         self.multigpu = multigpu
@@ -218,9 +288,18 @@ class DecoderInitialization(nn.Module):
 
         return dec_init_state
 
-    def forward(self, src, tgt, lengths, dec_state=None):
+    # TODO: include parameters src_language, tgt_language (coming from batch variable)
+    def forward(self, src, tgt, lengths, dec_state=None, flipping=False):
 
+        #TODO: remove parameters related to WALS: MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages
+        # include the four numpy vectors denoting WALS features (for all languages)
+        # include a list of string with language codes for this particular experiments, i.e. ['eng', 'ger', 'fre']
         wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both) # 1 x rnn_size
+
+        self.SimulationLanguages = flip_simulation_languages(self.SimulationLanguages, flipping)
+
+        #TODO: for this particular language pair (given in src_language, tgt_language parameters),
+        # extract the WALS features and use only these.
 
         dim0, dim1 = wals_features.size()
         wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
@@ -256,6 +335,9 @@ class CombineWalsSourceWords(nn.Module):
     Decoder: StdRNNDecoder
     """
 
+    #TODO: remove parameters related to WALS: MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages
+    # include the four numpy vectors denoting WALS features (for all languages)
+    # include a list of string with language codes for this particular experiments, i.e. ['eng', 'ger', 'fre']
     def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
 
         self.multigpu = multigpu
@@ -270,9 +352,18 @@ class CombineWalsSourceWords(nn.Module):
         self.SimulationLanguages = SimulationLanguages
         self.model_opt = model_opt
 
-    def forward(self, src, tgt, lengths, dec_state=None):
+    # TODO: include parameters src_language, tgt_language (coming from batch variable)
+    def forward(self, src, tgt, lengths, dec_state=None, flipping=False):
 
+        #TODO: remove parameters related to WALS: MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages
+        # include the four numpy vectors denoting WALS features (for all languages)
+        # include a list of string with language codes for this particular experiments, i.e. ['eng', 'ger', 'fre']
         wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both) # 1 x wals_size
+
+        self.SimulationLanguages = flip_simulation_languages(self.SimulationLanguages, flipping)
+
+        #TODO: for this particular language pair (given in src_language, tgt_language parameters),
+        # extract the WALS features and use only these.
 
         dim0, dim1 = wals_features.size()
         wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
@@ -302,6 +393,9 @@ class CombineWalsTargetWords(nn.Module):
     Decoder: StdRNNDecoder
     """
 
+    #TODO: remove parameters related to WALS: MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages
+    # include the four numpy vectors denoting WALS features (for all languages)
+    # include a list of string with language codes for this particular experiments, i.e. ['eng', 'ger', 'fre']
     def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
 
         self.multigpu = multigpu
@@ -316,9 +410,18 @@ class CombineWalsTargetWords(nn.Module):
         self.SimulationLanguages = SimulationLanguages
         self.model_opt = model_opt
 
-    def forward(self, src, tgt, lengths, dec_state=None):
+    # TODO: include parameters src_language, tgt_language (coming from batch variable)
+    def forward(self, src, tgt, lengths, dec_state=None, flipping=False):
 
+        #TODO: remove parameters related to WALS: MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages
+        # include the four numpy vectors denoting WALS features (for all languages)
+        # include a list of string with language codes for this particular experiments, i.e. ['eng', 'ger', 'fre']
         wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both) # 1 x wals_size
+
+        self.SimulationLanguages = flip_simulation_languages(self.SimulationLanguages, flipping)
+
+        #TODO: for this particular language pair (given in src_language, tgt_language parameters),
+        # extract the WALS features and use only these.
 
         dim0, dim1 = wals_features.size()
         wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
@@ -349,6 +452,9 @@ class WalsDoublyAttention(nn.Module):
     Decoder: StdRNNDecoderDoublyAttentive
     """
 
+    #TODO: remove parameters related to WALS: MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages
+    # include the four numpy vectors denoting WALS features (for all languages)
+    # include a list of string with language codes for this particular experiments, i.e. ['eng', 'ger', 'fre']
     def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, MLPFeatureTypes, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
 
         self.multigpu = multigpu
@@ -364,9 +470,18 @@ class WalsDoublyAttention(nn.Module):
         self.SimulationLanguages = SimulationLanguages
         self.model_opt = model_opt
 
-    def forward(self, src, tgt, lengths, dec_state=None):
+    # TODO: include parameters src_language, tgt_language (coming from batch variable)
+    def forward(self, src, tgt, lengths, dec_state=None, flipping=False):
 
+        #TODO: remove parameters related to WALS: MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages
+        # include the four numpy vectors denoting WALS features (for all languages)
+        # include a list of string with language codes for this particular experiments, i.e. ['eng', 'ger', 'fre']
         wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both, self.MLPFeatureTypes) # 11 x rnn_size
+
+        self.SimulationLanguages = flip_simulation_languages(self.SimulationLanguages, flipping)
+
+        #TODO: for this particular language pair (given in src_language, tgt_language parameters),
+        # extract the WALS features and use only these.
 
         dim0, dim1 = wals_features.size()
         dim0_src, dim1_src, dim2_src = src.size()
@@ -404,6 +519,9 @@ class WalstoDecHidden(nn.Module):
     Decoder: StdRNNDecoder
     """
 
+    #TODO: remove parameters related to WALS: MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages
+    # include the four numpy vectors denoting WALS features (for all languages)
+    # include a list of string with language codes for this particular experiments, i.e. ['eng', 'ger', 'fre']
     def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
 
         self.multigpu = multigpu
@@ -418,9 +536,18 @@ class WalstoDecHidden(nn.Module):
         self.SimulationLanguages = SimulationLanguages
         self.model_opt = model_opt
 
-    def forward(self, src, tgt, lengths, dec_state=None):
+    # TODO: include parameters src_language, tgt_language (coming from batch variable)
+    def forward(self, src, tgt, lengths, dec_state=None, flipping=False):
 
+        #TODO: remove parameters related to WALS: MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages
+        # include the four numpy vectors denoting WALS features (for all languages)
+        # include a list of string with language codes for this particular experiments, i.e. ['eng', 'ger', 'fre']
         wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both) # 1 x wals_size
+
+        self.SimulationLanguages = flip_simulation_languages(self.SimulationLanguages, flipping)
+
+        #TODO: for this particular language pair (given in src_language, tgt_language parameters),
+        # extract the WALS features and use only these.
 
         dim0, dim1 = wals_features.size()
         wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size

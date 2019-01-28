@@ -21,7 +21,8 @@ from onmt.models.model import get_local_features
 
 from collections import defaultdict
 
-
+#TODO: delete all parameters related to WALS features: FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages
+# include four numpy vectors describing WALS
 def build_translator(opt, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages, report_score=True, logger=None, out_file=None):
     if out_file is None:
         out_file = codecs.open(opt.output, 'w+', 'utf-8')
@@ -38,6 +39,8 @@ def build_translator(opt, FeatureValues, FeatureTensors, FeatureTypes, FeaturesL
         fields, model, model_opt = \
             onmt.decoders.ensemble.load_test_model(opt, dummy_opt.__dict__)
     else:
+        #TODO: delete all parameters related to WALS features: FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages
+        # include four numpy vectors describing WALS
         fields, model, model_opt = \
             onmt.model_builder.load_test_model(opt, dummy_opt.__dict__, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages)
 
@@ -187,6 +190,11 @@ class Translator(object):
 
         if batch_size is None:
             raise ValueError("batch_size must be set")
+
+        #TODO: move things that need to be used inside build_dataset to outside (here)
+        # and pass these "things" as parameters to build_dataset(.)
+        #TODO: provide the four numpy vectors describing WALS features for all languages
+        # we expect that the first token is always the WALS language code
         data = inputters. \
             build_dataset(self.fields,
                           self.data_type,
@@ -206,6 +214,11 @@ class Translator(object):
             cur_device = "cuda"
         else:
             cur_device = "cpu"
+
+        #data_iter = inputters.OrderedIterator(
+        #    dataset=data, device=cur_device,
+        #    batch_size=batch_size, train=False, sort=False,
+        #    sort_within_batch=True, shuffle=False)
 
         data_iter = inputters.OrderedIterator(
             dataset=data, device=cur_device,
@@ -359,8 +372,11 @@ class Translator(object):
 
 
         if self.model.wals_model == 'EncInitHidden_Target' or self.model.wals_model == 'EncInitHidden_Both':
-
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
@@ -378,7 +394,11 @@ class Translator(object):
 
         if self.model.wals_model == 'DecInitHidden_Target' or self.model.wals_model == 'DecInitHidden_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
@@ -394,7 +414,11 @@ class Translator(object):
 
         if self.model.wals_model == 'WalstoSource_Target' or self.model.wals_model == 'WalstoSource_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
@@ -404,7 +428,11 @@ class Translator(object):
 
         if self.model.wals_model == 'WalstoTarget_Target' or self.model.wals_model == 'WalstoTarget_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
@@ -414,7 +442,11 @@ class Translator(object):
 
         if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both, self.model.MLPFeatureTypes) # 11 x rnn_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             dim0_src, dim1_src, dim2_src = src.size()
@@ -429,7 +461,11 @@ class Translator(object):
 
         if self.model.wals_model == 'WalstoDecHidden_Target' or self.model.wals_model == 'WalstoDecHidden_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
@@ -655,7 +691,11 @@ class Translator(object):
 
         if self.model.wals_model == 'EncInitHidden_Target' or self.model.wals_model == 'EncInitHidden_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
@@ -673,7 +713,11 @@ class Translator(object):
 
         if self.model.wals_model == 'DecInitHidden_Target' or self.model.wals_model == 'DecInitHidden_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
@@ -689,7 +733,11 @@ class Translator(object):
 
         if self.model.wals_model == 'WalstoSource_Target' or self.model.wals_model == 'WalstoSource_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
@@ -699,7 +747,11 @@ class Translator(object):
 
         if self.model.wals_model == 'WalstoTarget_Target' or self.model.wals_model == 'WalstoTarget_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
@@ -709,7 +761,11 @@ class Translator(object):
 
         if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both, self.model.MLPFeatureTypes) # 11 x rnn_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             dim0_src, dim1_src, dim2_src = src.size()
@@ -724,7 +780,11 @@ class Translator(object):
 
         if self.model.wals_model == 'WalstoDecHidden_Target' or self.model.wals_model == 'WalstoDecHidden_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
@@ -868,7 +928,11 @@ class Translator(object):
 
         if self.model.wals_model == 'EncInitHidden_Target' or self.model.wals_model == 'EncInitHidden_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
@@ -886,7 +950,11 @@ class Translator(object):
 
         if self.model.wals_model == 'DecInitHidden_Target' or self.model.wals_model == 'DecInitHidden_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x rnn_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
@@ -902,7 +970,11 @@ class Translator(object):
 
         if self.model.wals_model == 'WalstoSource_Target' or self.model.wals_model == 'WalstoSource_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
@@ -912,7 +984,11 @@ class Translator(object):
 
         if self.model.wals_model == 'WalstoTarget_Target' or self.model.wals_model == 'WalstoTarget_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
@@ -922,7 +998,11 @@ class Translator(object):
 
         if self.model.wals_model == 'WalsDoublyAttentive_Target' or self.model.wals_model == 'WalsDoublyAttentive_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both, self.model.MLPFeatureTypes) # 11 x rnn_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             dim0_src, dim1_src, dim2_src = src.size()
@@ -937,7 +1017,11 @@ class Translator(object):
 
         if self.model.wals_model == 'WalstoDecHidden_Target' or self.model.wals_model == 'WalstoDecHidden_Both':
 
+            # TODO: remove call to get_local_features(.) and replace it by call to new function we will create get_wals_features(.)
             wals_features = get_local_features(self.model.EmbeddingFeatures, self.model.FeatureValues, self.model.FeatureTypes, self.model.SimulationLanguages, self.model.model_opt, self.model.MLP_target_or_both) # 1 x wals_size
+
+            # TODO: use src_language and tgt_language from batch variable to select
+            # WALS features only for the language pair (stored in wals_features variable)
 
             dim0, dim1 = wals_features.size()
             wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x wals_size
