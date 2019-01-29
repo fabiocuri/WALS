@@ -86,7 +86,10 @@ class Statistics(object):
 
     def accuracy(self):
         """ compute accuracy """
-        return 100 * (self.n_correct / self.n_words)
+        if self.n_words>0:
+            return 100 * (self.n_correct / self.n_words)
+        else:
+            return 0
 
     def xent(self):
         """ compute cross entropy """
