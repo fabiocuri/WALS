@@ -97,7 +97,10 @@ class Statistics(object):
 
     def ppl(self):
         """ compute perplexity """
-        return math.exp(min(self.loss / self.n_words, 100))
+        if self.n_words>0:
+            return math.exp(min(self.loss / self.n_words, 100))
+        else:
+            return 1000
 
     def elapsed_time(self):
         """ compute elapsed time """
