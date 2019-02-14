@@ -67,7 +67,8 @@ class DatasetBase(torchtext.data.Dataset):
         n_feats = None
         for token in tokens:
             split_token = token.split(u"￨")
-            assert all([special != split_token[0] for special in specials]), \
+            specials_ = [UNK_WORD, BOS_WORD, EOS_WORD]
+            assert all([special != split_token[0] for special in specials_]), \
                 "Dataset cannot contain Special Tokens"
 
             if split_token[0]:

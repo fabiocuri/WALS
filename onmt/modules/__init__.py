@@ -12,4 +12,4 @@ from onmt.modules.average_attn import AverageAttention
 __all__ = ["LayerNorm", "Elementwise", "context_gate_factory", "ContextGate",
            "GlobalAttention", "ConvMultiStepAttention", "CopyGenerator",
            "CopyGeneratorLossCompute", "MultiHeadedAttention", "Embeddings",
-           "PositionalEncoding", "WeightNormConv2d", "AverageAttention"]
+           "PositionalEncoding", "WeightNormConv2d", "AverageAttention", "MLPWals2Hidden"]

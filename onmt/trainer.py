@@ -11,6 +11,7 @@
 
 from __future__ import division
 
+import sys
 import onmt.inputters as inputters
 import onmt.utils
 
@@ -259,6 +260,17 @@ class Trainer(object):
             self.model.zero_grad()
 
         for batch in true_batchs:
+            # batch.dataset.examples.src_tokens
+            # batch.src
+            # batch.tgt
+            print("batch.src", batch.src)
+            print()
+            print("batch.tgt", batch.tgt)
+            print()
+            print("batch.indices", batch.indices)
+            print()
+            sys.exit(1)
+
             target_size = batch.tgt.size(0)
             # Truncated BPTT: reminder not compatible with accum > 1
             if self.trunc_size:

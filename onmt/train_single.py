@@ -6,6 +6,7 @@ from __future__ import division
 
 import argparse
 import os
+import sys
 import random
 import torch
 
@@ -22,20 +23,6 @@ from onmt.utils.logging import init_logger, logger
 import sqlite3
 from collections import defaultdict
 import numpy as np
-
-def get_feat_values(SimulationLanguages, WalsValues, FeaturesList, ListLanguages, FeatureTypes, FeatureNames) :
-
-    FeatureValues, FeatureTensors = defaultdict(lambda: defaultdict(int)), defaultdict(lambda: defaultdict(int))
-
-    for Language in SimulationLanguages: # For each language in the simulation...
-        idx_language = ListLanguages.index(Language) 
-        for FeatureType in FeatureTypes: # tuple
-            for Feature in FeatureType[1]: # For each feature...
-                idx_feature = FeatureNames.index(Feature)
-                FeatureValues[Language][Feature] = WalsValues[idx_language][idx_feature+1] 
-                FeatureTensors[Feature] = torch.from_numpy(np.array(range(FeaturesList[idx_feature][1] + 1)))
-
-    return FeatureValues, FeatureTensors
 
 
 def _check_save_model_path(opt):
@@ -94,56 +81,26 @@ def training_opt_postprocessing(opt, device_id):
 
 
 def main(opt, device_id):
+    # Processing WALS features...
+    wals_languages  = opt.wals_languages
+    wals_npz        = np.load(opt.path_to_wals)
 
-    SimulationLanguages = [opt.wals_src, opt.wals_tgt]
+    # create numpy vector with shape #nlangs x #nfeats
+    wals_features = np.zeros(shape=(len(wals_languages), len(wals_npz['all_features_nclasses'])), dtype='uint8')
+    wals_features[:,:] = -1
+    # create numpy vector with number of classes per feature (shape #nfeats)
+    wals_features_nclasses = wals_npz['all_features_nclasses']
 
-    print('Loading WALS features from databases...')
+    # for each language in the experiments, collect features and store them in 'wals_features'
+    count = 0
+    for lang in wals_languages:
+        lang_idx = np.where( bytes(lang, 'UTF-8') == wals_npz['languages'] )
+        wals_features[ count ] = wals_npz['all_features'][ lang_idx ]
+        count+=1
+    assert(count == len(wals_languages))
 
-    cwd = os.getcwd()
-
-    db = sqlite3.connect(cwd + '/onmt/WalsValues.db')
-    cursor = db.cursor()
-    cursor.execute('SELECT * FROM WalsValues')
-    WalsValues = cursor.fetchall()
-
-    db = sqlite3.connect(cwd + '/onmt/FeaturesList.db')
-    cursor = db.cursor()
-    cursor.execute('SELECT * FROM FeaturesList')
-    FeaturesList = cursor.fetchall()
-
-    db = sqlite3.connect(cwd + '/onmt/FTInfos.db')
-    cursor = db.cursor()
-    cursor.execute('SELECT * FROM FTInfos')
-    FTInfos = cursor.fetchall()
-
-    db = sqlite3.connect(cwd + '/onmt/FTList.db')
-    cursor = db.cursor()
-    cursor.execute('SELECT * FROM FTList')
-    FTList = cursor.fetchall()
-
-    ListLanguages = []
-    for i in WalsValues:
-        ListLanguages.append(i[0])
-
-    FeatureTypes = []
-    for i in FTList:
-        FeatureTypes.append((i[0], i[1].split(',')))
-
-    FeatureNames = []
-    for i in FeatureTypes:
-        FeatureNames += i[1]
-
-    FeatureTypesNames = []
-    for i in FeatureTypes:
-        FeatureTypesNames.append(i[0])
-
-    FeatureValues, FeatureTensors = get_feat_values(SimulationLanguages, WalsValues, FeaturesList, ListLanguages, FeatureTypes, FeatureNames) 
-
-    print('WALS databases loaded!')
-
-    # FeatureValues: defaultdict with feature values, per language.
-    # FeatureTensors: tensor of possible outputs, per feature.
-
+    # done.
+    
     opt = training_opt_postprocessing(opt, device_id)
     init_logger(opt.log_file)
     # Load checkpoint if we resume from a previous training.
@@ -175,7 +132,7 @@ def main(opt, device_id):
                     % (j, len(fields[feat].vocab)))
 
     # Build model.
-    model = build_model(model_opt, opt, fields, checkpoint, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages)
+    model = build_model(model_opt, opt, fields, wals_features, wals_features_nclasses, wals_languages, checkpoint)
     n_params, enc, dec = _tally_parameters(model)
     logger.info('encoder: %d' % enc)
     logger.info('decoder: %d' % dec)

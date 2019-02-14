@@ -2,7 +2,7 @@
 This file is for models creation, which consults options
 and creates each encoder and decoder accordingly.
 """
-
+import sys
 import torch
 import torch.nn as nn
 from torch.nn.init import xavier_uniform_
@@ -21,73 +21,74 @@ from onmt.decoders.transformer import TransformerDecoder
 from onmt.decoders.cnn_decoder import CNNDecoder
 
 from onmt.modules import Embeddings, CopyGenerator
+from onmt.modules.wals import MLP_Wals2Hidden
 from onmt.modules.embeddings import FeatureEmbedding, FeatureMLP, MLP2RNNHiddenTarget, MLP2RNNHiddenBoth, MLP2WalsHiddenTarget, MLP2WalsHiddenBoth, MLPAttentionTarget, MLPAttentionBoth
 from onmt.models.model import EncoderInitialization, DecoderInitialization, CombineWalsSourceWords, CombineWalsTargetWords, WalsDoublyAttention, WalstoDecHidden
 from onmt.utils.misc import use_gpu
 from onmt.utils.logging import logger
 from operator import itemgetter
 
-def build_feature_embeddings(gpu, FeatureTensors, FeaturesList, FeatureNames, Feature):
+#def build_feature_embeddings(gpu, FeatureTensors, FeaturesList, FeatureNames, Feature):
+#
+#    idx_feature = FeatureNames.index(Feature)
+#    embedding_dim = FeaturesList[idx_feature][2] # Result of a linear transformation (check wals.py)
+#    num_embeddings = len(FeatureTensors[Feature]) 
+#    dic = FeatureTensors[Feature]
+#
+#    if gpu:
+#        dic = dic.cuda()
+#    
+#    return FeatureEmbedding(embedding_dim,
+#                      num_embeddings,
+#                      dic)
 
-    idx_feature = FeatureNames.index(Feature)
-    embedding_dim = FeaturesList[idx_feature][2] # Result of a linear transformation (check wals.py)
-    num_embeddings = len(FeatureTensors[Feature]) 
-    dic = FeatureTensors[Feature]
+#def build_mlp_feature_type(opt, FTInfos, FeatureTypesNames, FeatureType):
+#    
+#    idx_featuretype = FeatureTypesNames.index(FeatureType)
+#    num_embeddings = FTInfos[idx_featuretype][3]
+#    
+#    return FeatureMLP(num_embeddings,
+#                      opt.wals_size)
 
-    if gpu:
-        dic = dic.cuda()
-    
-    return FeatureEmbedding(embedding_dim,
-                      num_embeddings,
-                      dic)
+#def build_mlp2rnnhiddensize_target(opt, FTInfos):
+#
+#    num_embeddings=0
+#    for FT in FTInfos:
+#        num_embeddings+=FT[3]
+#
+#    return MLP2RNNHiddenTarget(num_embeddings, opt)
 
-def build_mlp_feature_type(opt, FTInfos, FeatureTypesNames, FeatureType):
-    
-    idx_featuretype = FeatureTypesNames.index(FeatureType)
-    num_embeddings = FTInfos[idx_featuretype][3]
-    
-    return FeatureMLP(num_embeddings,
-                      opt.wals_size)
+#def build_mlp2rnnhiddensize_both(opt, FTInfos):
+#
+#    num_embeddings=0
+#    for FT in FTInfos:
+#        num_embeddings+=FT[3]
+#
+#    return MLP2RNNHiddenBoth(num_embeddings, opt)
 
-def build_mlp2rnnhiddensize_target(opt, FTInfos):
+#def build_mlp2walshiddensize_target(opt, FTInfos):
+#
+#    num_embeddings=0
+#    for FT in FTInfos:
+#        num_embeddings+=FT[3]
+#
+#    return MLP2WalsHiddenTarget(num_embeddings, opt)
 
-    num_embeddings=0
-    for FT in FTInfos:
-        num_embeddings+=FT[3]
+#def build_mlp2walshiddensize_both(opt, FTInfos):
+#
+#    num_embeddings=0
+#    for FT in FTInfos:
+#        num_embeddings+=FT[3]
+#
+#    return MLP2WalsHiddenBoth(num_embeddings, opt)
 
-    return MLP2RNNHiddenTarget(num_embeddings, opt)
+#def build_doublyattentive_target(opt):
+#
+#    return MLPAttentionTarget(opt)
 
-def build_mlp2rnnhiddensize_both(opt, FTInfos):
-
-    num_embeddings=0
-    for FT in FTInfos:
-        num_embeddings+=FT[3]
-
-    return MLP2RNNHiddenBoth(num_embeddings, opt)
-
-def build_mlp2walshiddensize_target(opt, FTInfos):
-
-    num_embeddings=0
-    for FT in FTInfos:
-        num_embeddings+=FT[3]
-
-    return MLP2WalsHiddenTarget(num_embeddings, opt)
-
-def build_mlp2walshiddensize_both(opt, FTInfos):
-
-    num_embeddings=0
-    for FT in FTInfos:
-        num_embeddings+=FT[3]
-
-    return MLP2WalsHiddenBoth(num_embeddings, opt)
-
-def build_doublyattentive_target(opt):
-
-    return MLPAttentionTarget(opt)
-
-def build_doublyattentive_both(opt):
-
-    return MLPAttentionBoth(opt)
+#def build_doublyattentive_both(opt):
+#
+#    return MLPAttentionBoth(opt)
 
 
 def build_embeddings(opt, word_dict, feature_dicts, for_encoder=True):
@@ -222,14 +223,14 @@ def load_test_model(opt, dummy_opt, FeatureValues, FeatureTensors, FeatureTypes,
     for arg in dummy_opt:
         if arg not in model_opt:
             model_opt.__dict__[arg] = dummy_opt[arg]
-    model = build_base_model(model_opt, fields, use_gpu(opt), FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages, checkpoint)
+    model = build_base_model(model_opt, fields, use_gpu(opt), wals_features, wals_features_nclasses, wals_languages, checkpoint)
     model.eval()
     model.generator.eval()
 
     return fields, model, model_opt
 
 
-def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages, checkpoint=None):
+def build_base_model(model_opt, fields, gpu, wals_features, wals_features_nclasses, wals_languages, checkpoint=None):
 
     """
     Args:
@@ -288,33 +289,55 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
     decoder = build_decoder(model_opt, tgt_embeddings)
 
     # Wals
+    print('Building feature embeddings for each WALS feature...')
+    wals_feature_embeddings = []
+    wals_concat_size = 0
+    for lang_idx, lang_name in enumerate(wals_languages):
+        print(lang_idx, lang_name)
+        for feat_idx, feat_nclasses in enumerate(wals_features_nclasses):
+            # we must create embeddings with number of classes feat_nclasses+1 to include an OOV token for each feature
+            feat_size = 1
+            wals_feature_embeddings.append(
+                    ('%s_%i'%(lang_name, feat_idx), torch.nn.Embedding( feat_nclasses+1, feat_size ))
+            )
+            wals_concat_size += feat_size
+    wals_feature_embeddings = nn.ModuleDict( wals_feature_embeddings )
 
-    print('Building embeddings for each WALS feature and MLP models for each feature type...')
+    # WALS feature combination - similar as idea in http://aclweb.org/anthology/P17-1152
 
-    embeddings_list, embeddings_keys, mlp_list, mlp_keys = [], [], [], []
+    #print(x)
+    #sys.exit(1)
+    #print('Building embeddings for each WALS feature and MLP models for each feature type...')
 
-    for FeatureType in FeatureTypes:
+    #embeddings_list, embeddings_keys, mlp_list, mlp_keys = [], [], [], []
 
-        list_features = FeatureType[1]
+    #for FeatureType in FeatureTypes:
+    #    list_features = FeatureType[1]
+    #    for Feature in list_features:
+    #        globals()['embedding_%s' % Feature] = build_feature_embeddings(gpu, FeatureTensors, FeaturesList, FeatureNames, Feature)   # 192 embedding structures, one for each feature.
+    #        embeddings_keys.append(Feature)
+    #        embeddings_list.append(globals()['embedding_%s' % Feature])
+    #    globals()['mlp_%s' % FeatureType[0]] = build_mlp_feature_type(model_opt, FTInfos, FeatureTypesNames, FeatureType[0]) # 11 MLPs, one for each feature type.
+    #    mlp_keys.append(FeatureType[0])
+    #    mlp_list.append(globals()['mlp_%s' % FeatureType[0]])
 
-        for Feature in list_features:
+    #embeddings_dic_keys = dict(zip(embeddings_keys, embeddings_list))
+    #EmbeddingFeatures = nn.ModuleDict(embeddings_dic_keys)
 
-            globals()['embedding_%s' % Feature] = build_feature_embeddings(gpu, FeatureTensors, FeaturesList, FeatureNames, Feature)   # 192 embedding structures, one for each feature.
-            embeddings_keys.append(Feature)
-            embeddings_list.append(globals()['embedding_%s' % Feature])
-        globals()['mlp_%s' % FeatureType[0]] = build_mlp_feature_type(model_opt, FTInfos, FeatureTypesNames, FeatureType[0]) # 11 MLPs, one for each feature type.
-        mlp_keys.append(FeatureType[0])
-        mlp_list.append(globals()['mlp_%s' % FeatureType[0]])
-
-    embeddings_dic_keys = dict(zip(embeddings_keys, embeddings_list))
-    EmbeddingFeatures = nn.ModuleDict(embeddings_dic_keys)
-
-    mlp_dic_keys = dict(zip(mlp_keys, mlp_list))
+    #mlp_dic_keys = dict(zip(mlp_keys, mlp_list))
 
     # Build NMTModel(= encoder + decoder).
     device = torch.device("cuda" if gpu else "cpu")
 
-    if model_opt.wals_model == 'EncInitHidden_Target':
+    if model_opt.wals_model == 'EncInitHidden':
+
+        #MLP2RNNHiddenSize_Target = build_mlp2rnnhiddensize_target(model_opt, FTInfos)
+        mlp_wals2hidden = MLP_Wals2Hidden(model_opt, wals_concat_size)
+        #model = EncoderInitialization(model_opt.wals_model, encoder, decoder, MLP2RNNHiddenSize_Target, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt)
+        model = EncoderInitialization(model_opt.wals_model, encoder, decoder, model_opt, mlp_wals2hidden, wals_feature_embeddings, wals_languages)
+        print("Model created: uses WALS features to initialize encoder's hidden state.")
+
+    elif model_opt.wals_model == 'EncInitHidden_Target':
 
         MLP2RNNHiddenSize_Target = build_mlp2rnnhiddensize_target(model_opt, FTInfos)
         print('Embeddings for WALS features and MLP models are built!')
@@ -453,10 +476,10 @@ def build_base_model(model_opt, fields, gpu, FeatureValues, FeatureTensors, Feat
     return model
 
 
-def build_model(model_opt, opt, fields, checkpoint, FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages):
+def build_model(model_opt, opt, fields, wals_features, wals_features_nclasses, wals_languages, checkpoint):
     """ Build the Model """
     logger.info('Building model...')
     model = build_base_model(model_opt, fields,
-                             use_gpu(opt), FeatureValues, FeatureTensors, FeatureTypes, FeaturesList, FeatureNames, FTInfos, FeatureTypesNames, SimulationLanguages, checkpoint)
+                             use_gpu(opt), wals_features, wals_features_nclasses, wals_languages, checkpoint)
     logger.info(model)
     return model

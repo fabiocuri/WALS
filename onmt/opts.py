@@ -442,12 +442,15 @@ def train_opts(parser):
                        model faster and smaller""")
 
     # Wals options
+    group = parser.add_argument_group('WALS')
+    group.add_argument('-path_to_wals', required=True, type=str, help="Numpy NPZ file that contains all information about the WALS features for all languages.")
     group.add_argument('-wals_src', required=True, type=str, help="Wals source language.")
-
     group.add_argument('-wals_tgt', required=True, type=str, help="Wals target language.")
-
-    parser.add_argument('-wals_model', required=True, type=str,
-                        choices=['EncInitHidden_Target', 'EncInitHidden_Both', 'DecInitHidden_Target', 'DecInitHidden_Both', 'WalstoSource_Target', 'WalstoSource_Both', 'WalstoTarget_Target', 'WalstoTarget_Both', 'WalsDoublyAttentive_Target', 'WalsDoublyAttentive_Both', 'WalstoDecHidden_Target', 'WalstoDecHidden_Both'],
+    group.add_argument('-wals_languages', required=True, type=str, nargs="+", help="WALS three-letter codes for all languages included in experiment.")
+    #group.add_argument('-wals_model', required=True, type=str,
+    #                    choices=['EncInitHidden_Target', 'EncInitHidden_Both', 'DecInitHidden_Target', 'DecInitHidden_Both', 'WalstoSource_Target', 'WalstoSource_Both', 'WalstoTarget_Target', 'WalstoTarget_Both', 'WalsDoublyAttentive_Target', 'WalsDoublyAttentive_Both', 'WalstoDecHidden_Target', 'WalstoDecHidden_Both'],
+    #                    help="""WALS NMT model type.""")
+    group.add_argument('-wals_model', required=True, type=str, choices=['EncInitHidden', 'DecInitHidden', 'WalstoSource', 'WalstoTarget', 'WalsDoublyAttentive', 'WalstoDecHidden'],
                         help="""WALS NMT model type.""")
 
 

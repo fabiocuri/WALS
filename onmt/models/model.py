@@ -122,18 +122,17 @@ class EncoderInitialization(nn.Module):
     Encoder: RNNEncoder
     Decoder: StdRNNDecoder
     """
-    def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
+    #def __init__(self, wals_model, encoder, decoder, MLP_target_or_both, EmbeddingFeatures, FeatureValues, FeatureTypes, SimulationLanguages, model_opt, multigpu=False):
+    def __init__(self, wals_model, encoder, decoder, model_opt, wals_mlp, wals_feature_embeddings, wals_languages, multigpu=False):
 
         self.multigpu = multigpu
         super(EncoderInitialization, self).__init__()
         self.wals_model = wals_model
         self.encoder = encoder  
         self.decoder = decoder  
-        self.MLP_target_or_both = MLP_target_or_both
-        self.EmbeddingFeatures = EmbeddingFeatures  
-        self.FeatureValues = FeatureValues 
-        self.FeatureTypes = FeatureTypes
-        self.SimulationLanguages = SimulationLanguages
+        self.wals_mlp = wals_mlp
+        self.wals_feature_embeddings = wals_feature_embeddings
+        self.wals_languages = wals_languages
         self.model_opt = model_opt
         self.is_tuple_hidden = None
 
@@ -150,15 +149,32 @@ class EncoderInitialization(nn.Module):
 
         return ret
 
-    def forward(self, src, tgt, lengths, dec_state=None):
+    def forward(self, src, tgt, lengths, src_langs, tgt_langs, dec_state=None):
+        assert(all([src_lang in self.wals_languages for src_lang in src_langs])), 'ERROR: One or more language codes not found: %s'%str(src_langs)
+        assert(all([tgt_lang in self.wals_languages for tgt_lang in tgt_langs])), 'ERROR: One or more language codes not found: %s'%str(tgt_langs)
 
-        wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both) # 1 x rnn_size
+        # assert languages in all examples in minibatch are equal
+        assert(src_langs.count(src_langs[0]) == len(src_langs)), 'ERROR: Languages for all examples in mini-batch must be equal with WALS model EncInitHidden! Found: %s'%str(src_langs)
+        assert(tgt_langs.count(tgt_langs[0]) == len(tgt_langs)), 'ERROR: Languages for all examples in mini-batch must be equal with WALS model EncInitHidden! Found: %s'%str(tgt_langs)
+        #wals_features = get_local_features(self.EmbeddingFeatures, self.FeatureValues, self.FeatureTypes, self.SimulationLanguages, self.model_opt, self.MLP_target_or_both) # 1 x rnn_size
+        #dim0, dim1 = wals_features.size()
+        #wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
 
-        dim0, dim1 = wals_features.size()
-        wals_features = wals_features.view(1, dim0, dim1) # 1 x 1 x rnn_size
+        # slice WALS feature embeddings for the language pair
+        src_lang_idx = self.wals_languages.index( src_langs[0] )
+        tgt_lang_idx = self.wals_languages.index( tgt_langs[0] )
+        src_wals = self.wals_feature_embeddings[src_lang_idx]
+        tgt_wals = self.wals_feature_embeddings[tgt_lang_idx]
 
-        tgt = tgt[:-1]  # exclude last target from inputs
+        # interact source/target language features and concatenate
+        # [ src; tgt; src-tgt; src*tgt ]
+        wals_feature_embeddings_langpair = torch.cat([src_wals, tgt_wals, src_wals-tgt_wals, src_wals*tgt_wals], dim=-1)
 
+        # project features into RNN hidden states space
+        wals_features = self.wals_mlp(wals_feature_embeddings_langpair)
+
+        # exclude last target from inputs
+        tgt = tgt[:-1]  
         # create initial hidden state differently for GRU/LSTM
         if self.evaluate_is_tuple_hidden(src, lengths):
             enc_init_state = (wals_features, wals_features)
@@ -166,7 +182,6 @@ class EncoderInitialization(nn.Module):
         else:
             enc_init_state = wals_features
             is_tuple = False
-
 
         enc_hidden, context = self.encoder(input=src, lengths=lengths, hidden=enc_init_state, is_LSTM=is_tuple)
         enc_state = self.decoder.init_decoder_state(src, context, enc_hidden)
