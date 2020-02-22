@@ -12,10 +12,8 @@ feat_names, feat_number = [], []
 # Read file and convert it into a dictionary.
 
 def build_df(file):
-
     df = pd.read_csv(file)
     df = df.to_dict('index')
-
     return df
 
 # Create dictionaries and dataframes
