@@ -209,7 +209,6 @@ def main(opt, device_id):
     if opt.tensorboard:
         trainer.report_manager.tensorboard_writer.close()
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='train.py',
