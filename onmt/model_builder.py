@@ -7,7 +7,6 @@ import sys
 import torch
 import torch.nn as nn
 from torch.nn.init import xavier_uniform_
-
 import onmt.inputters as inputters
 import onmt.modules
 from onmt.encoders.rnn_encoder import RNNEncoder
