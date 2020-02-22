@@ -4,7 +4,6 @@ from __future__ import print_function
 import argparse
 from onmt.models.sru import CheckSRU
 
-
 def model_opts(parser):
     """
     These options are passed to the construction of the model.
